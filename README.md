@@ -26,7 +26,11 @@ Meta Quest 2/3 환경을 기준으로 합니다.
     * 설치가 완료되면, **Android 탭** (Quest 기기 타겟)을 선택하고 **Oculus** 항목을 체크합니다.
     * (PC VR 테스트 시) **PC 탭** (Desktop)을 선택하고 **Oculus** 항목을 체크합니다.
     * `Oculus` 항목 옆에 노란색 경고 아이콘이 나타나면 클릭 후 `Fix All` 또는 `Apply All`을 눌러 권장 설정을 자동 적용합니다.
-
+      
+3.  **Meta Quest 3 지원 활성화 (권장)**
+    * `XR Plug-in Management` 탭 하위에 있는 **Oculus** 설정 메뉴로 이동합니다. (또는 `Project Settings > XR Plug-in Management > Oculus`)
+    * **Android 탭**을 선택합니다.
+    * `Target Devices` 목록에서 **Quest 3** 항목을 **체크**합니다. (Quest 2는 기본으로 체크되어 있습니다.)
 ---
 
 ## 3. XR Interaction Toolkit (XRI) 설치
@@ -38,7 +42,7 @@ Meta Quest 2/3 환경을 기준으로 합니다.
 2.  **XRI 설치**
     * 검색창이나 목록에서 **XR Interaction Toolkit**을 찾아 선택하고 `Install` 버튼을 클릭합니다.
 
-3.  **Starter Assets 임포트 (필수)**
+3.  **Starter Assets 임포트**
     * XRI 설치가 완료되면, Package Manager 창 우측의 설명란에서 **Samples** 탭을 엽니다.
     * **Starter Assets** 항목 옆의 `Import` 버튼을 클릭합니다.
 
@@ -52,14 +56,14 @@ Meta Quest 2/3 환경을 기준으로 합니다.
 2.  **XR Origin (VR 플레이어) 배치**
     * Hierarchy 뷰(빈 공간)에서 마우스 오른쪽 버튼을 클릭합니다.
     * 메뉴에서 **`XR > XR Origin (XR Rig)`**를 선택합니다.
-    * 메뉴에서 **`XR > Locomotion System`**를 선택한 다음, Inspector 뷰의 `Locomotion System, XR Origin (XR Rig)`을 슬롯에 끌어다 놓습니다.
+    * 메뉴에서 **`XR > Locomotion System`**를 선택한 다음, `Locomotion System` 오브젝트 Inspector 뷰의 `Locomotion System, XR Origin (XR Rig)`을 슬롯에 끌어다 놓습니다.
 
 3.  **컨트롤러 입력 프리셋 설정**
     * `XR Origin (XR Rig)`의 자식 오브젝트인 **`LeftHand Controller`**를 선택합니다.
     * Inspector 뷰의 `XR Controller (Action-based)` 컴포넌트 상단에 있는 **`Preset`** 아이콘을 클릭하고 **`XRI Default LeftHand`**를 선택합니다.
     * **`RightHand Controller`** 오브젝트에도 동일하게 반복하되, **`XRI Default RightHand`** 프리셋을 선택합니다.
 
-4.  **LeftHand 컨트롤러 설정 (Direct Grab 전용)**
+4.  **LeftHand 컨트롤러 설정 (Direct Grab 전용)(선택)**
     * **`LeftHand Controller`** 오브젝트를 선택합니다.
     * Inspector 뷰에서 `XR Ray Interactor`, `XR Interactor Line Visual`, `XR Ray Reticle` 등의 컴포넌트를 **제거(Remove Component)**합니다.
     * `Add Component` 버튼을 클릭하여 **`XR Direct Interactor`** 컴포넌트를 추가합니다.
@@ -71,14 +75,14 @@ Meta Quest 2/3 환경을 기준으로 합니다.
 ### 물체 잡기 (Gra)
 
 1.  잡고 싶은 물체(예: Cube)를 생성합니다.
-2.  해당 오브젝트에 `Collider` 컴포넌트를 추가합니다.
+2.  해당 오브젝트에 `Collider` 컴포넌트가 존재해야 합니다.
 3.  물리 효과를 위해 `Rigidbody` 컴포넌트를 추가합니다.
 4.  `Add Component`를 눌러 **XR Grab Interactable** 컴포넌트를 추가합니다.
 5.  (생략) `LeftHand Controller`의 `XR Direct Interactor`와 `RightHand Controller`의 `XR Ray Interactor`의 **`Interaction Layer Mask`**에 이 물체의 `Layer`가 포함되어 있는지 확인합니다.
 
 ### 텔레포트 (Teleportation)
 
-1.  발판으로 사용할 `Cylinder` 오브젝트를 생성합니다.
+1.  발판으로 사용할 `Cylinder` 오브젝트를 생성하고 크기를 조절합니다. 
 2.  `Add Component`를 눌러 **Teleportation Anchor** 컴포넌트를 추가합니다.
 3.  `Teleportation Anchor` 컴포넌트의 **`Teleportation Provider`** 슬롯에 Hierarchy 뷰의 **`Locomotion System`** 오브젝트를 끌어다 놓습니다.
 4.  `Teleport Trigger` 항목을 **`On Select Entered`**로 설정합니다. 
