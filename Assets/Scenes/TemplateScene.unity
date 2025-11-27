@@ -2298,7 +2298,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   destination: {fileID: 1932977163}
-  teleportProvider: {fileID: 769208003}
+  teleportProvider: {fileID: 1375737375}
   detectRadius: 15
   padLayer:
     serializedVersion: 2
@@ -2512,7 +2512,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   destination: {fileID: 74904833}
-  teleportProvider: {fileID: 769208003}
+  teleportProvider: {fileID: 1375737375}
   detectRadius: 15
   padLayer:
     serializedVersion: 2
@@ -6129,7 +6129,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   destination: {fileID: 1942952649}
-  teleportProvider: {fileID: 769208003}
+  teleportProvider: {fileID: 1375737375}
   detectRadius: 1
   padLayer:
     serializedVersion: 2
@@ -8623,7 +8623,8 @@ GameObject:
   - component: {fileID: 1375737369}
   - component: {fileID: 1375737372}
   - component: {fileID: 1375737374}
-  - component: {fileID: 1375737373}
+  - component: {fileID: 1375737376}
+  - component: {fileID: 1375737375}
   m_Layer: 0
   m_Name: XR Origin (XR Rig)
   m_TagString: Untagged
@@ -8704,45 +8705,6 @@ CharacterController:
   m_SkinWidth: 0.005
   m_MinMoveDistance: 0
   m_Center: {x: 0, y: 0.5, z: 0}
---- !u!114 &1375737373
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1375737368}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 919e39492806b334982b6b84c90dd927, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_System: {fileID: 1030337037}
-  m_TurnSpeed: 60
-  m_LeftHandTurnAction:
-    m_UseReference: 1
-    m_Action:
-      m_Name: Left Hand Turn
-      m_Type: 0
-      m_ExpectedControlType: Vector2
-      m_Id: 68e6ba6e-b2bb-49b6-978e-130b933ea0f3
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: 1010738217276881514, guid: c348712bda248c246b8c49b3db54643f,
-      type: 3}
-  m_RightHandTurnAction:
-    m_UseReference: 0
-    m_Action:
-      m_Name: Right Hand Turn
-      m_Type: 0
-      m_ExpectedControlType: Vector2
-      m_Id: e27aa222-941f-463c-bee0-f3d0efc28f01
-      m_Processors: 
-      m_Interactions: 
-      m_SingletonActionBindings: []
-      m_Flags: 0
-    m_Reference: {fileID: 0}
 --- !u!114 &1375737374
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8788,6 +8750,34 @@ MonoBehaviour:
       m_Flags: 0
     m_Reference: {fileID: -8198699208435500284, guid: c348712bda248c246b8c49b3db54643f,
       type: 3}
+--- !u!114 &1375737375
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1375737368}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01f69dc1cb084aa42b2f2f8cd87bc770, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_System: {fileID: 1030337037}
+  m_DelayTime: 0
+--- !u!114 &1375737376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1375737368}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2dd125e7e1ce644cebe4e1e687f6cd9a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  origin: {fileID: 1375737370}
+  controller: {fileID: 1375737372}
 --- !u!1 &1409466073
 GameObject:
   m_ObjectHideFlags: 0
@@ -9478,7 +9468,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   destination: {fileID: 1121975265}
-  teleportProvider: {fileID: 769208003}
+  teleportProvider: {fileID: 1375737375}
   detectRadius: 0.4
   padLayer:
     serializedVersion: 2
@@ -9739,7 +9729,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   destination: {fileID: 186637309}
-  teleportProvider: {fileID: 769208003}
+  teleportProvider: {fileID: 1375737375}
   detectRadius: 30
   padLayer:
     serializedVersion: 2
@@ -12218,7 +12208,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   destination: {fileID: 1701872132}
-  teleportProvider: {fileID: 769208003}
+  teleportProvider: {fileID: 1375737375}
   detectRadius: 0.7
   padLayer:
     serializedVersion: 2
