@@ -1109,10 +1109,10 @@
                 {
                     "name": "",
                     "id": "bbb3ae66-9e59-40a0-8e10-54d65afe6969",
-                    "path": "<XRSimulatedController>{LeftHand}/primary2DAxis",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxis}",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Continuous Move",
                     "action": "Move",
                     "isComposite": false,
                     "isPartOfComposite": false
