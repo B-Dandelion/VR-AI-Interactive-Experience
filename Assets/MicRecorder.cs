@@ -12,7 +12,7 @@ public class AskAudioResponse
 public class MicRecorder : MonoBehaviour
 {
     [Header("Server")]
-    public string serverBaseUrl = "http://172.19.1.192:8000"; // or 맥 IP
+    public string serverBaseUrl = "http://172.19.1.192:8000";
     public string askAudioPath = "http://172.19.1.192:8000/ask_audio";
     public AudioSource audioSource;
 
@@ -23,6 +23,13 @@ public class MicRecorder : MonoBehaviour
     private AudioClip _clip;
     private string _micDevice;
     private bool _isRecording;
+
+    void Start()
+    {
+        // AudioSource가 없으면 자동으로 추가해주는 안전장치
+        if (audioSource == null)
+            audioSource = gameObject.AddComponent<AudioSource>();
+    }
 
     public void StartRecord()
     {
@@ -54,19 +61,13 @@ public class MicRecorder : MonoBehaviour
             return;
         }
 
-        // 필요 길이만 잘라서 새 AudioClip으로 만들기
         int channels = _clip.channels;
         float[] data = new float[position * channels];
         _clip.GetData(data, 0);
-        AudioClip trimmed = AudioClip.Create(
-            "recorded",
-            position,
-            channels,
-            sampleRate,
-            false
-        );
+        AudioClip trimmed = AudioClip.Create("recorded", position, channels, sampleRate, false);
         trimmed.SetData(data, 0);
 
+        // WavUtility 클래스가 프로젝트에 있어야 합니다.
         byte[] wavData = WavUtility.FromAudioClip(trimmed);
         StartCoroutine(SendAudioToServer(wavData));
     }
@@ -82,16 +83,14 @@ public class MicRecorder : MonoBehaviour
         {
             yield return req.SendWebRequest();
 
-            Debug.Log($"[MicRecorder] HTTP result = {req.result}, code = {req.responseCode}, error = {req.error}");
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"[MicRecorder] Error: {req.error}");
+                yield break;
+            }
 
             string body = req.downloadHandler.text;
             Debug.Log($"[MicRecorder] body = {body}");
-
-            if (req.result != UnityWebRequest.Result.Success)
-            {
-                Debug.LogError("ask_audio error, stop here");
-                yield break;
-            }
 
             AskAudioResponse res;
             try
@@ -104,47 +103,49 @@ public class MicRecorder : MonoBehaviour
                 yield break;
             }
 
-            Debug.Log($"[MicRecorder] answer = {res.answer}, audio_url = {res.audio_url}");
-
             if (string.IsNullOrEmpty(res.audio_url))
             {
-                Debug.LogWarning("[MicRecorder] audio_url is empty, not downloading audio");
+                Debug.LogWarning("[MicRecorder] audio_url is empty");
                 yield break;
             }
 
-            // audio_url이 절대경로인지 상대경로인지에 따라 처리
+            // URL 조합
             string audioUrlFull = res.audio_url;
             if (!audioUrlFull.StartsWith("http"))
             {
-                // 서버에서 "/audio/xxx.wav" 이렇게만 보내면 여기서 host 붙여줌
-                audioUrlFull = serverBaseUrl + res.audio_url; // serverBaseUrl 따로 있다면
+                audioUrlFull = serverBaseUrl + res.audio_url;
             }
+
+            // [중요] URL에 공백 등이 있을 경우를 대비해 인코딩
+            audioUrlFull = System.Uri.EscapeUriString(audioUrlFull);
 
             Debug.Log($"[MicRecorder] downloading audio from {audioUrlFull}");
 
-            using (UnityWebRequest audioReq =
-                   UnityWebRequestMultimedia.GetAudioClip(audioUrlFull, AudioType.UNKNOWN))
+            // [핵심 수정] AudioType.UNKNOWN 사용
+            using (UnityWebRequest audioReq = UnityWebRequestMultimedia.GetAudioClip(audioUrlFull, AudioType.MPEG))
             {
-                yield return audioReq.SendWebRequest();
+                var handler = (DownloadHandlerAudioClip)audioReq.downloadHandler;
+                handler.streamAudio = false;
+                handler.compressed = false;
 
-                Debug.Log($"[MicRecorder] audio HTTP result = {audioReq.result}, code = {audioReq.responseCode}, error = {audioReq.error}");
+                yield return audioReq.SendWebRequest();
 
                 if (audioReq.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogError("오디오 다운로드 실패");
+                    Debug.LogError(audioReq.error);
                     yield break;
                 }
 
-                AudioClip clip = DownloadHandlerAudioClip.GetContent(audioReq);
-                if (clip == null)
-                {
-                    Debug.LogError("DownloadHandlerAudioClip.GetContent result is null");
-                    yield break;
-                }
+                AudioClip clip = handler.audioClip;
 
+                Debug.Log($"Clip freq={clip.frequency}, channels={clip.channels}, len={clip.length}");
+                Debug.Log($"AudioSource volume={audioSource.volume}, spatialBlend={audioSource.spatialBlend}");
+
+                audioSource.spatialBlend = 0f; // 2D
                 audioSource.clip = clip;
+
+                yield return new WaitForEndOfFrame();
                 audioSource.Play();
-                Debug.Log("[MicRecorder] audio play!");
             }
         }
     }
