@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using Unity.XR.CoreUtils;
 
+// ? ????? ??? AudioSource? ???? ????.
+[RequireComponent(typeof(AudioSource))]
 public class XRTeleportPad_CC : MonoBehaviour
 {
     [Header("Existing Settings")]
@@ -11,17 +13,24 @@ public class XRTeleportPad_CC : MonoBehaviour
     public float detectRadius = 0.4f;
     public LayerMask padLayer;
 
-    [Header("New Stage Settings")] // --- [추가된 부분 1] ---
-    public TeleportManager teleportManager; // 매니저 연결
-    public int targetStageIndex;            // 이동 후 저장될 스테이지 번호 (0, 1, 2...)
+    [Header("New Stage Settings")]
+    public TeleportManager teleportManager;
+    public int targetStageIndex;
+
+    [Header("Audio Settings (??)")] // --- [???] ---
+    public AudioClip specialSound;   // ??? MP3? ??? ??? (? ??? ???)
+    public bool playAsBGM = true;    // ???? ??? ???? ?? ?? (2D)
 
     private XROrigin origin;
+    private AudioSource audioSource; // --- [???] ---
 
     void Start()
     {
         origin = FindObjectOfType<XROrigin>();
 
-        // --- [추가된 부분 2] 매니저가 비어있으면 자동으로 찾음 ---
+        // ??? ?? ????
+        audioSource = GetComponent<AudioSource>();
+
         if (teleportManager == null)
         {
             teleportManager = FindObjectOfType<TeleportManager>();
@@ -34,24 +43,46 @@ public class XRTeleportPad_CC : MonoBehaviour
             return;
 
         Vector3 footPos = origin.transform.position;
-
         Collider[] hits = Physics.OverlapSphere(footPos, detectRadius, padLayer);
 
         foreach (Collider hit in hits)
         {
             if (hit.gameObject == this.gameObject)
             {
-                // --- [추가된 부분 3] 텔레포트 직전에 매니저에게 보고 ---
+                // 1. ???? ??
                 if (teleportManager != null)
                 {
                     teleportManager.currentStageIndex = targetStageIndex;
-                    Debug.Log($" 스테이지 인덱스 갱신됨: {targetStageIndex}");
+                    Debug.Log($"? ???? ??? ???: {targetStageIndex}");
                 }
 
+                // 2. [???] ?? ??? ??
+                if (specialSound != null)
+                {
+                    PlaySpecialSound();
+                }
+
+                // 3. ????
                 Teleport();
                 break;
             }
         }
+    }
+
+    void PlaySpecialSound()
+    {
+        // ?? ?? ??? ?? ?? ?? (??)
+        if (audioSource.isPlaying && audioSource.clip == specialSound) return;
+
+        audioSource.clip = specialSound;
+
+        // ????? ????? ?? ???? ???
+        // ??? ???? ?? 2D(0)? ??? ?? ?????.
+        if (playAsBGM) audioSource.spatialBlend = 0f;
+        else audioSource.spatialBlend = 1f;
+
+        audioSource.Play();
+        Debug.Log("?? ?? ??? ?? ??!");
     }
 
     void Teleport()
