@@ -13976,7 +13976,7 @@ MonoBehaviour:
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
-    m_Reference: {fileID: -2610417683178656356, guid: c348712bda248c246b8c49b3db54643f,
+    m_Reference: {fileID: 6130920172265733470, guid: c348712bda248c246b8c49b3db54643f,
       type: 3}
 --- !u!1 &1383715563
 GameObject:
@@ -18762,15 +18762,10 @@ MonoBehaviour:
   tutorialPanel: {fileID: 1485662872}
   slideDisplay: {fileID: 1082672606}
   tutorialSlides:
-  - {fileID: 2800000, guid: 8ccd4dcff7f88a54aaa637d410447d85, type: 3}
-  - {fileID: 2800000, guid: 1ccad88354df84b459bfaf92b3d123df, type: 3}
-  - {fileID: 2800000, guid: 2eed62b3e7c944f4fbb48bb83c3ed2a3, type: 3}
-  - {fileID: 2800000, guid: 5ecfc7e0b98426d438cce0b4458ed4ca, type: 3}
-  - {fileID: 2800000, guid: 8e4f294372afd0b4896590eb7fca691b, type: 3}
-  - {fileID: 2800000, guid: 6118b5811358b0841a9a4d13c20dd845, type: 3}
-  - {fileID: 2800000, guid: 64607b1e01a5d8d4d94c84de69e105d1, type: 3}
-  - {fileID: 2800000, guid: 1730e021d7d09344b9d636fe931408b9, type: 3}
-  - {fileID: 2800000, guid: 2d69a2a8587e6ae40bbcfb27690bdaa6, type: 3}
+  - {fileID: 2800000, guid: 96c879a24bf1e4ca79ab4b7df7e48cdb, type: 3}
+  - {fileID: 2800000, guid: 0483b774d3fff48779527c5421b4bbaf, type: 3}
+  - {fileID: 2800000, guid: 9176ee10833ff4056bc9621bfb519645, type: 3}
+  - {fileID: 2800000, guid: b8c83a4ddc36a4c61906a2f3c65b3b5c, type: 3}
   headCamera: {fileID: 1636572262}
   spawnDistance: 1.5
   teleportManager: {fileID: 1326650303}
