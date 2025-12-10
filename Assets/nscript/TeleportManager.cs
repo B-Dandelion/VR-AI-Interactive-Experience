@@ -77,14 +77,14 @@ public class TeleportManager : MonoBehaviour
 
     // --- 실제 이동 로직 ---
 
-    void TeleportToGlobal()
+    public void TeleportToGlobal()
     {
         Debug.Log(">>> 전체 초기화!");
         currentStageIndex = 0; // 스테이지 1로 초기화
         MovePlayer(globalStartPoint);
     }
 
-    void TeleportToCurrentStage()
+    public void TeleportToCurrentStage()
     {
         Debug.Log($">>> 스테이지 {currentStageIndex + 1} 재시작!");
 
