@@ -38,6 +38,7 @@ public class MicRecorder : MonoBehaviour
 
     public void StartRecord()
     {
+        StopAllSounds();
         if (_isRecording) return;
         if (Microphone.devices.Length == 0)
         {
@@ -93,7 +94,7 @@ public class MicRecorder : MonoBehaviour
         using (UnityWebRequest req = UnityWebRequest.Post(askAudioPath, form))
         {
             req.SetRequestHeader("ngrok-skip-browser-warning", "true");
-            req.timeout = 15; // 타임아웃 설정 (15초)
+            req.timeout = 60; // 타임아웃 설정 (60초)
 
             yield return req.SendWebRequest();
 
@@ -136,7 +137,27 @@ public class MicRecorder : MonoBehaviour
             yield return StartCoroutine(DownloadAndPlayAudio(audioUrlFull));
         }
     }
+    private void StopAllSounds()
+    {
+        // 1. AI 마이크(MicRecorder) 끄기
+        MicRecorder mic = FindObjectOfType<MicRecorder>();
+        if (mic != null)
+        {
+            if (mic.audioSource != null && mic.audioSource.isPlaying) mic.audioSource.Stop();
+            if (mic.statusUI != null) mic.statusUI.HideImmediate();
+        }
 
+        // 2. 맵에 있는 텔레포트 패드들 소리 끄기
+        XRTeleportPad_CC[] allPads = FindObjectsOfType<XRTeleportPad_CC>();
+        foreach (var pad in allPads)
+        {
+            AudioSource padAudio = pad.GetComponent<AudioSource>();
+            if (padAudio != null && padAudio.isPlaying)
+            {
+                padAudio.Stop();
+            }
+        }
+    }
     private IEnumerator DownloadAndPlayAudio(string url)
     {
         using (UnityWebRequest audioReq = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.MPEG))
@@ -153,7 +174,7 @@ public class MicRecorder : MonoBehaviour
             }
 
             AudioClip clip = ((DownloadHandlerAudioClip)audioReq.downloadHandler).audioClip;
-
+            StopAllSounds();
             // 재생 시작
             audioSource.spatialBlend = 0f;
             audioSource.clip = clip;

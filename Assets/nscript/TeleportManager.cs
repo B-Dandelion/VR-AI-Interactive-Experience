@@ -4,21 +4,21 @@ using UnityEngine.InputSystem;
 
 public class TeleportManager : MonoBehaviour
 {
-    [Header("UI ¼³Á¤")]
+    [Header("UI ????")]
     public GameObject uiCanvas;
     public Image fillGauge;
 
-    [Header("ÀÔ·Â ¼³Á¤")]
-    public InputActionProperty globalResetInput; // X¹öÆ°
-    public InputActionProperty stageResetInput;  // Y¹öÆ°
+    [Header("???? ????")]
+    public InputActionProperty globalResetInput; // X????
+    public InputActionProperty stageResetInput;  // Y????
 
-    [Header("ÀÌµ¿ ¼³Á¤ (¿©±â Ãß°¡µÊ)")]
-    public Transform xrOrigin;          // ÇÃ·¹ÀÌ¾î (ÀÌµ¿½ÃÅ³ ´ë»ó)
-    public Transform globalStartPoint;  // ÀüÃ¼ ½ÃÀÛÁ¡ À§Ä¡
-    public Transform[] stageStartPoints; // ½ºÅ×ÀÌÁöº° ½ÃÀÛÁ¡ (¹è¿­)
+    [Header("???? ???? (???? ??????)")]
+    public Transform xrOrigin;          // ???????? (???????? ????)
+    public Transform globalStartPoint;  // ???? ?????? ????
+    public Transform[] stageStartPoints; // ?????????? ?????? (????)
 
-    [Header("ÇöÀç »óÅÂ")]
-    public int currentStageIndex = 0;   // ÇöÀç ¸î ½ºÅ×ÀÌÁöÀÎ°¡? (0ºÎÅÍ ½ÃÀÛ)
+    [Header("???? ????")]
+    public int currentStageIndex = 0;   // ???? ?? ????????????? (0???? ????)
     public float holdTime = 5.0f;
 
     private float _currentTimer = 0f;
@@ -46,7 +46,7 @@ public class TeleportManager : MonoBehaviour
 
                 if (_currentTimer >= holdTime)
                 {
-                    // 5ÃÊ ¿Ï·á! ½ÇÁ¦ ÀÌµ¿ ÇÔ¼ö È£Ãâ
+                    // 5?? ????! ???? ???? ???? ????
                     if (globalValue > 0.5f)
                     {
                         TeleportToGlobal();
@@ -75,27 +75,49 @@ public class TeleportManager : MonoBehaviour
         if (fillGauge != null) fillGauge.fillAmount = 0;
     }
 
-    // --- ½ÇÁ¦ ÀÌµ¿ ·ÎÁ÷ ---
+    // --- ???? ???? ???? ---
 
     public void TeleportToGlobal()
     {
-        Debug.Log(">>> ÀüÃ¼ ÃÊ±âÈ­!");
-        currentStageIndex = 0; // ½ºÅ×ÀÌÁö 1·Î ÃÊ±âÈ­
+        Debug.Log(">>> ???? ??????!");
+        currentStageIndex = 0; // ???????? 1?? ??????
+        StopAllSounds();
         MovePlayer(globalStartPoint);
+    }
+    private void StopAllSounds()
+    {
+        // 1. AI ë§ˆì´í¬(MicRecorder) ë„ê¸°
+        MicRecorder mic = FindObjectOfType<MicRecorder>();
+        if (mic != null)
+        {
+            if (mic.audioSource != null && mic.audioSource.isPlaying) mic.audioSource.Stop();
+            if (mic.statusUI != null) mic.statusUI.HideImmediate();
+        }
+
+        // 2. ë§µì— ìˆëŠ” í…”ë ˆí¬íŠ¸ íŒ¨ë“œë“¤ ì†Œë¦¬ ë„ê¸°
+        XRTeleportPad_CC[] allPads = FindObjectsOfType<XRTeleportPad_CC>();
+        foreach (var pad in allPads)
+        {
+            AudioSource padAudio = pad.GetComponent<AudioSource>();
+            if (padAudio != null && padAudio.isPlaying)
+            {
+                padAudio.Stop();
+            }
+        }
     }
 
     public void TeleportToCurrentStage()
     {
-        Debug.Log($">>> ½ºÅ×ÀÌÁö {currentStageIndex + 1} Àç½ÃÀÛ!");
+        Debug.Log($">>> ???????? {currentStageIndex + 1} ??????!");
 
-        // ½ºÅ×ÀÌÁö ¹øÈ£°¡ ¾ÈÀüÇÑÁö Ã¼Å©
+        // ???????? ?????? ???????? ????
         if (currentStageIndex >= 0 && currentStageIndex < stageStartPoints.Length)
         {
             MovePlayer(stageStartPoints[currentStageIndex]);
         }
         else
         {
-            Debug.LogWarning("ÀÌµ¿ÇÒ ½ºÅ×ÀÌÁö À§Ä¡°¡ ¼³Á¤µÇÁö ¾Ê¾Ò½À´Ï´Ù!");
+            Debug.LogWarning("?????? ???????? ?????? ???????? ??????????!");
         }
     }
 
@@ -103,15 +125,15 @@ public class TeleportManager : MonoBehaviour
     {
         if (xrOrigin == null || target == null) return;
 
-        // 1. ¹°¸® Ãæµ¹ ¹æÁö¸¦ À§ÇØ Ä³¸¯ÅÍ ÄÁÆ®·Ñ·¯ Àá½Ã ²ô±â (Áß¿ä)
+        // 1. ???? ???? ?????? ???? ?????? ???????? ???? ???? (????)
         CharacterController cc = xrOrigin.GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
 
-        // 2. À§Ä¡¿Í È¸Àü º¹»ç
+        // 2. ?????? ???? ????
         xrOrigin.position = target.position;
         xrOrigin.rotation = target.rotation;
 
-        // 3. ´Ù½Ã ÄÑ±â
+        // 3. ???? ????
         if (cc != null) cc.enabled = true;
     }
 }
