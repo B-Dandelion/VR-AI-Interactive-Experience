@@ -4,14 +4,18 @@ using UnityEngine;
 /// <summary>
 /// Normalizes the runtime-generated portfolio portal sizes after the portal bootstrap runs.
 /// Portal1 (the start-area portal) is kept as the visual reference.
-/// Portal2..Portal6 are enlarged to 125% of Portal1's radius so they remain clearly visible
-/// inside large anatomical environments where the restored legacy particle bounds are tiny.
+/// Portal2..Portal6 are forced to a clearly visible size based on Portal1, regardless of how
+/// tiny their restored legacy particle bounds were.
 /// </summary>
 public class PortfolioPortalScaleNormalizer : MonoBehaviour
 {
-    private const float InternalPortalToStartRatio = 1.25f;
+    // Internal portals should read as obvious traversal gates, not small markers.
+    private const float InternalPortalToStartRatio = 1.45f;
+
+    // Some restored Portal2..6 particle objects have extremely tiny renderer bounds.
+    // The previous x12 cap was still far too small, so allow a much larger correction.
     private const float MinScaleMultiplier = 1f;
-    private const float MaxScaleMultiplier = 12f;
+    private const float MaxScaleMultiplier = 100f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -25,7 +29,8 @@ public class PortfolioPortalScaleNormalizer : MonoBehaviour
 
     private IEnumerator Start()
     {
-        // Wait one frame so PortfolioPortalGuideBootstrap has finished creating all rings.
+        // Wait two frames so the portal bootstrap has definitely created all generated rings.
+        yield return null;
         yield return null;
 
         Transform startPortal = FindGeneratedPortal("Portal1");
@@ -55,14 +60,23 @@ public class PortfolioPortalScaleNormalizer : MonoBehaviour
             float currentRadius = GetMainRingRadius(portal);
             if (currentRadius <= 0.001f) continue;
 
-            float multiplier = Mathf.Clamp(targetInternalRadius / currentRadius, MinScaleMultiplier, MaxScaleMultiplier);
+            float multiplier = targetInternalRadius / currentRadius;
+            multiplier = Mathf.Clamp(multiplier, MinScaleMultiplier, MaxScaleMultiplier);
+
+            // Generated portal roots always start at scale 1, so this directly maps the
+            // visible ring to the target world-space size without touching teleport logic.
             portal.localScale = Vector3.one * multiplier;
             resized++;
 
-            Debug.Log($"[PortfolioPortalScale] Portal{portalIndex}: radius {currentRadius:F2} -> target {targetInternalRadius:F2}, scale x{multiplier:F2}");
+            Debug.Log(
+                $"[PortfolioPortalScale] Portal{portalIndex}: radius {currentRadius:F3} -> " +
+                $"target {targetInternalRadius:F3}, scale x{multiplier:F2}");
         }
 
-        Debug.Log($"[PortfolioPortalScale] normalized {resized} internal portal(s) to {InternalPortalToStartRatio:P0} of Portal1 size.");
+        Debug.Log(
+            $"[PortfolioPortalScale] normalized {resized} internal portal(s) to " +
+            $"{InternalPortalToStartRatio:P0} of Portal1 size.");
+
         Destroy(gameObject);
     }
 
