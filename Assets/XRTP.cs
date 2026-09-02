@@ -18,26 +18,16 @@ public class XRTeleportPad_CC : MonoBehaviour
     public int targetStageIndex;
 
     [Header("Audio Settings (음향)")]
-    public AudioClip specialSound;
-    public bool playAsBGM = true;
+    public AudioClip specialSound;   // 해당 패드를 밟았을 때 나올 안내 음성
+    public bool playAsBGM = true;    // 체크하면 2D(배경음)처럼 들림
 
     private XROrigin origin;
-    private Transform playerHead;
     private AudioSource audioSource;
 
     void Start()
     {
         origin = FindObjectOfType<XROrigin>();
         audioSource = GetComponent<AudioSource>();
-
-        // XR Device Simulator moves the tracked HMD independently from the XROrigin root.
-        // The portal is a 3D trigger volume, so detection should follow the actual tracked head
-        // position on every axis. This also supports vertical passages such as esophagus -> stomach.
-        Camera mainCamera = Camera.main;
-        if (mainCamera != null)
-        {
-            playerHead = mainCamera.transform;
-        }
 
         if (teleportManager == null)
         {
@@ -50,43 +40,34 @@ public class XRTeleportPad_CC : MonoBehaviour
         if (origin == null || destination == null || teleportProvider == null)
             return;
 
-        Vector3 playerPosition = GetPlayerDetectionPosition();
-        Collider[] hits = Physics.OverlapSphere(playerPosition, detectRadius, padLayer);
+        Vector3 footPos = origin.transform.position;
+        Collider[] hits = Physics.OverlapSphere(footPos, detectRadius, padLayer);
 
         foreach (Collider hit in hits)
         {
             if (hit.gameObject == this.gameObject)
             {
+                // 1. 스테이지 인덱스 업데이트
                 if (teleportManager != null)
                 {
                     teleportManager.currentStageIndex = targetStageIndex;
                     Debug.Log($"새 스테이지 인덱스 설정: {targetStageIndex}");
                 }
 
+                // 2. 텔레포트 전에 기존 오디오 종료
                 StopAllPreviousSound();
 
+                // 3. 현재 스테이지 안내 음성 재생
                 if (specialSound != null)
                 {
                     PlaySpecialSound();
                 }
 
+                // 4. 텔레포트 실행
                 Teleport();
                 break;
             }
         }
-    }
-
-    Vector3 GetPlayerDetectionPosition()
-    {
-        // For editor simulation, use the tracked HMD's complete world position.
-        // Using X/Z from the camera but Y from XROrigin prevented vertically stacked
-        // portal volumes from ever being detected when the simulator moved downward.
-        if (playerHead != null)
-        {
-            return playerHead.position;
-        }
-
-        return origin.transform.position;
     }
 
     void StopAllPreviousSound()
