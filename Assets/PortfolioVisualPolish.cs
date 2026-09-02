@@ -17,6 +17,20 @@ public static class PortfolioVisualPolish
         "intestine"
     };
 
+    private static readonly string[] OrganVisualExclusions =
+    {
+        "tp pad",
+        "teleport",
+        "portal",
+        "destination",
+        "startpoint",
+        "start point",
+        "arrow",
+        "3d rightarrow",
+        "effect",
+        "particle"
+    };
+
     private static readonly string[] ExplicitBlockerTokens =
     {
         "start wall",
@@ -48,12 +62,7 @@ public static class PortfolioVisualPolish
 
             string hierarchyPath = BuildHierarchyPath(renderer.transform).ToLowerInvariant();
 
-            // Keep VFX / line-style renderers out of the anatomical material override.
-            bool canPolishAsMesh = !(renderer is ParticleSystemRenderer) &&
-                                   !(renderer is TrailRenderer) &&
-                                   !(renderer is LineRenderer);
-
-            if (canPolishAsMesh && ContainsAny(hierarchyPath, OrganNameTokens))
+            if (ShouldPolishAsOrganMesh(renderer, hierarchyPath))
             {
                 polishedMaterials += ReplaceWithPortfolioMatteMaterials(renderer);
             }
@@ -68,10 +77,35 @@ public static class PortfolioVisualPolish
         Debug.Log($"[PortfolioVisualPolish] matte organ materials: {polishedMaterials}, hidden blocker renderers: {hiddenBlockers}.");
     }
 
+    private static bool ShouldPolishAsOrganMesh(Renderer renderer, string hierarchyPath)
+    {
+        if (!ContainsAny(hierarchyPath, OrganNameTokens)) return false;
+        if (ContainsAny(hierarchyPath, OrganVisualExclusions)) return false;
+
+        // Do not reinterpret VFX / line-style renderers as anatomical surfaces.
+        if (renderer is ParticleSystemRenderer || renderer is TrailRenderer || renderer is LineRenderer)
+            return false;
+
+        // Teleport effects sometimes sit below organ-named parents. Their shaders are
+        // usually particle/unlit shaders even when the hierarchy path contains 'stomach'.
+        foreach (Material material in renderer.sharedMaterials)
+        {
+            if (material == null || material.shader == null) continue;
+
+            string shaderName = material.shader.name.ToLowerInvariant();
+            if (shaderName.Contains("particle") || shaderName.Contains("sprite") || shaderName.Contains("unlit"))
+                return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Replaces only the runtime material instances on anatomical renderers.
     /// The original base texture/color are reused, while metallic/specular/environment
     /// reflection data are intentionally discarded to remove the blue plastic sheen.
+    /// Anatomical shells are rendered double-sided because the experience views them
+    /// from both outside and inside.
     /// </summary>
     private static int ReplaceWithPortfolioMatteMaterials(Renderer renderer)
     {
@@ -110,7 +144,6 @@ public static class PortfolioVisualPolish
             {
                 matte.SetTexture("_BaseMap", baseTexture);
 
-                // Preserve texture tiling/offset when the source exposes a common albedo slot.
                 string sourceTextureProperty = GetBaseTextureProperty(source);
                 if (!string.IsNullOrEmpty(sourceTextureProperty))
                 {
@@ -119,7 +152,6 @@ public static class PortfolioVisualPolish
                 }
             }
 
-            // Keep useful surface detail, but do not copy metallic/specular maps.
             Texture normalMap = GetFirstTexture(source, "_BumpMap", "_NormalMap");
             if (normalMap != null && matte.HasProperty("_BumpMap"))
             {
@@ -128,8 +160,7 @@ public static class PortfolioVisualPolish
                 matte.EnableKeyword("_NORMALMAP");
             }
 
-            // Hard matte settings. These intentionally ignore the source asset's
-            // gloss/metallic/specular maps that caused strong blue sky reflections.
+            // Hard matte settings: discard metallic/specular/environment reflection data.
             if (matte.HasProperty("_Metallic")) matte.SetFloat("_Metallic", 0f);
             if (matte.HasProperty("_Smoothness")) matte.SetFloat("_Smoothness", 0.025f);
             if (matte.HasProperty("_Glossiness")) matte.SetFloat("_Glossiness", 0.025f);
@@ -137,15 +168,18 @@ public static class PortfolioVisualPolish
             if (matte.HasProperty("_SpecularHighlights")) matte.SetFloat("_SpecularHighlights", 0f);
             if (matte.HasProperty("_EnvironmentReflections")) matte.SetFloat("_EnvironmentReflections", 0f);
 
-            // URP uses keywords for the two checkboxes above; setting only the float
-            // is not sufficient for every shader/material state.
             matte.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
             matte.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
 
+            // Critical for this VR scene: organ meshes are thin shells and the camera
+            // travels inside them. URP/Lit defaults to Back-face culling, which makes
+            // the inside surface disappear. Cull Off renders both sides.
+            if (matte.HasProperty("_Cull")) matte.SetFloat("_Cull", 0f);
+            if (matte.HasProperty("_CullMode")) matte.SetFloat("_CullMode", 0f);
+            matte.doubleSidedGI = true;
+
             replacements[i] = matte;
             changed++;
-
-            Debug.Log($"[PortfolioVisualPolish] {renderer.name}: '{source.shader.name}' -> URP matte, baseTexture={(baseTexture != null ? baseTexture.name : "none")}");
         }
 
         renderer.materials = replacements;
@@ -167,9 +201,12 @@ public static class PortfolioVisualPolish
             if (material.HasProperty("_SpecColor")) material.SetColor("_SpecColor", Color.black);
             if (material.HasProperty("_SpecularHighlights")) material.SetFloat("_SpecularHighlights", 0f);
             if (material.HasProperty("_EnvironmentReflections")) material.SetFloat("_EnvironmentReflections", 0f);
+            if (material.HasProperty("_Cull")) material.SetFloat("_Cull", 0f);
+            if (material.HasProperty("_CullMode")) material.SetFloat("_CullMode", 0f);
 
             material.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
             material.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            material.doubleSidedGI = true;
             changed++;
         }
 
