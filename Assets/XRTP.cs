@@ -18,8 +18,8 @@ public class XRTeleportPad_CC : MonoBehaviour
     public int targetStageIndex;
 
     [Header("Audio Settings (음향)")]
-    public AudioClip specialSound;   // 해당 패드를 밟았을 때 나올 안내 음성
-    public bool playAsBGM = true;    // 체크하면 2D(배경음)처럼 들림
+    public AudioClip specialSound;
+    public bool playAsBGM = true;
 
     private XROrigin origin;
     private Transform playerHead;
@@ -30,9 +30,9 @@ public class XRTeleportPad_CC : MonoBehaviour
         origin = FindObjectOfType<XROrigin>();
         audioSource = GetComponent<AudioSource>();
 
-        // XR Device Simulator can move the HMD camera without moving the XROrigin root.
-        // Use the actual camera position for pad detection so editor simulation and HMD
-        // play both detect the player's physical location correctly.
+        // XR Device Simulator moves the tracked HMD independently from the XROrigin root.
+        // The portal is a 3D trigger volume, so detection should follow the actual tracked head
+        // position on every axis. This also supports vertical passages such as esophagus -> stomach.
         Camera mainCamera = Camera.main;
         if (mainCamera != null)
         {
@@ -50,45 +50,40 @@ public class XRTeleportPad_CC : MonoBehaviour
         if (origin == null || destination == null || teleportProvider == null)
             return;
 
-        Vector3 footPos = GetPlayerFootPosition();
-        Collider[] hits = Physics.OverlapSphere(footPos, detectRadius, padLayer);
+        Vector3 playerPosition = GetPlayerDetectionPosition();
+        Collider[] hits = Physics.OverlapSphere(playerPosition, detectRadius, padLayer);
 
         foreach (Collider hit in hits)
         {
             if (hit.gameObject == this.gameObject)
             {
-                // 1. 스테이지 인덱스 업데이트
                 if (teleportManager != null)
                 {
                     teleportManager.currentStageIndex = targetStageIndex;
                     Debug.Log($"새 스테이지 인덱스 설정: {targetStageIndex}");
                 }
 
-                // 2. 텔레포트 전에 기존에 재생 중인 소리 정리
                 StopAllPreviousSound();
 
-                // 3. 해당 스테이지 안내 음성 재생
                 if (specialSound != null)
                 {
                     PlaySpecialSound();
                 }
 
-                // 4. 텔레포트 실행
                 Teleport();
                 break;
             }
         }
     }
 
-    Vector3 GetPlayerFootPosition()
+    Vector3 GetPlayerDetectionPosition()
     {
-        // In the editor simulator the camera may move relative to XROrigin.
-        // Use camera X/Z while keeping the origin floor height for a stable foot point.
+        // For editor simulation, use the tracked HMD's complete world position.
+        // Using X/Z from the camera but Y from XROrigin prevented vertically stacked
+        // portal volumes from ever being detected when the simulator moved downward.
         if (playerHead != null)
         {
-            Vector3 footPos = playerHead.position;
-            footPos.y = origin.transform.position.y;
-            return footPos;
+            return playerHead.position;
         }
 
         return origin.transform.position;
@@ -96,7 +91,6 @@ public class XRTeleportPad_CC : MonoBehaviour
 
     void StopAllPreviousSound()
     {
-        // 1. AI 마이크(MicRecorder)가 말하고 있다면 끄기
         MicRecorder mic = FindObjectOfType<MicRecorder>();
         if (mic != null)
         {
@@ -111,7 +105,6 @@ public class XRTeleportPad_CC : MonoBehaviour
             }
         }
 
-        // 2. 다른 텔레포트 패드에서 재생 중인 소리 정리
         XRTeleportPad_CC[] allPads = FindObjectsOfType<XRTeleportPad_CC>();
         foreach (var pad in allPads)
         {
@@ -133,10 +126,7 @@ public class XRTeleportPad_CC : MonoBehaviour
         if (audioSource.isPlaying && audioSource.clip == specialSound) return;
 
         audioSource.clip = specialSound;
-
-        if (playAsBGM) audioSource.spatialBlend = 0f;
-        else audioSource.spatialBlend = 1f;
-
+        audioSource.spatialBlend = playAsBGM ? 0f : 1f;
         audioSource.Play();
         Debug.Log("새로운 안내 음성 재생!");
     }
