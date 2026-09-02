@@ -31,16 +31,6 @@
 
 콘텐츠 내부에는 별도의 조작 가이드 이미지도 구성되어 있으며, 실제 플레이 흐름에서 XR 입력과 이동 방식을 안내합니다.
 
-<details>
-<summary><b>Interaction guide assets</b></summary>
-<br/>
-<p align="center">
-  <img src="./Assets/nscript/tutoImg/bg1.jpg" width="30%" alt="Interaction guide 1" />
-  <img src="./Assets/nscript/tutoImg/bg4.jpg" width="30%" alt="Interaction guide 2" />
-  <img src="./Assets/nscript/tutoImg/bg7.jpg" width="30%" alt="Interaction guide 3" />
-</p>
-</details>
-
 ## System Architecture
 
 ```mermaid
