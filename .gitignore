@@ -21,6 +21,9 @@ venv/
 .env.*
 !.env.example
 
+# Generated TTS output (runtime only)
+/server/tts_out/
+
 # Generated Unity build debug information
 /ARVRMR2025_Project_Template_BurstDebugInformation_DoNotShip/
 
