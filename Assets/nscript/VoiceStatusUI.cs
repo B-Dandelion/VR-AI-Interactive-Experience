@@ -4,11 +4,11 @@ using System.Collections;
 
 public class VoiceStatusUI : MonoBehaviour
 {
-    [Header("UI ????")]
+    [Header("UI")]
     public GameObject canvasObj;
     public TextMeshProUGUI statusText;
 
-    [Header("??? ??")]
+    [Header("Status Messages")]
     public string recordMsg = "Listening...";
     public Color recordColor = Color.white;
 
@@ -18,21 +18,16 @@ public class VoiceStatusUI : MonoBehaviour
     public string playMsg = "Speaking...";
     public Color playColor = Color.green;
 
-    [Header("?? ??")]
+    [Header("Error")]
     public Color errorColor = new Color(1f, 0f, 0f);
 
     private Coroutine hideCoroutine;
 
     void Start()
     {
-        // ? ?? ??: ?????? ?? ?? ??
         if (canvasObj != null) canvasObj.SetActive(true);
-
-        // ??? ?? ???? ??
         ClearText();
     }
-
-    // --- ?? ?? ??? ---
 
     public void ShowRecording()
     {
@@ -52,6 +47,13 @@ public class VoiceStatusUI : MonoBehaviour
         SetStatus(playMsg, playColor);
     }
 
+    // Portfolio demo and other scripted UI can reuse the same status canvas.
+    public void ShowMessage(string message, Color color)
+    {
+        StopAutoHide();
+        SetStatus(message, color);
+    }
+
     public void ShowError(string message)
     {
         StopAutoHide();
@@ -59,16 +61,12 @@ public class VoiceStatusUI : MonoBehaviour
         HideDelayed(4.0f);
     }
 
-    // --- ???(??? ???) ?? ---
-
-    // 1. ?? ??? ???
     public void HideImmediate()
     {
         StopAutoHide();
         ClearText();
     }
 
-    // 2. n? ? ??? ???
     public void HideDelayed(float seconds)
     {
         StopAutoHide();
@@ -78,14 +76,11 @@ public class VoiceStatusUI : MonoBehaviour
     private IEnumerator CoHideRoutine(float delay)
     {
         yield return new WaitForSeconds(delay);
-        ClearText(); // ? ??? ? ??? ???? ???
+        ClearText();
     }
-
-    // --- ?? ?? ---
 
     private void SetStatus(string text, Color color)
     {
-        // ? ?? ??? ?? ??? ?? (?? ??? ??)
         if (canvasObj != null && !canvasObj.activeSelf) canvasObj.SetActive(true);
 
         if (statusText != null)
@@ -95,13 +90,9 @@ public class VoiceStatusUI : MonoBehaviour
         }
     }
 
-    // ? ???? ? ???? ???? ??
     private void ClearText()
     {
-        if (statusText != null)
-        {
-            statusText.text = "";
-        }
+        if (statusText != null) statusText.text = "";
     }
 
     private void StopAutoHide()
