@@ -8,6 +8,10 @@ using UnityEngine;
 /// </summary>
 public class PortfolioPortalLegacySize : MonoBehaviour
 {
+    // The legacy fire rings were useful as spatial references but visually too dominant.
+    // Keep the replacement magical-circle slightly smaller than the old footprint.
+    private const float LegacyFootprintRatio = 0.72f;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
@@ -46,17 +50,15 @@ public class PortfolioPortalLegacySize : MonoBehaviour
                 continue;
             }
 
-            // Keep the new designed arcs just slightly inside the footprint of the old fire ring.
-            // No global max clamp: anatomical stages are intentionally much larger than the start scene.
-            float targetRadius = legacyRadius * 0.92f;
+            float targetRadius = legacyRadius * LegacyFootprintRatio;
             float multiplier = targetRadius / generatedRadius;
             generatedPortal.localScale = Vector3.one * multiplier;
             resized++;
 
-            Debug.Log($"[PortfolioPortalLegacySize] {legacyName}: legacyRadius {legacyRadius:F2}, generatedRadius {generatedRadius:F2}, scale x{multiplier:F2}");
+            Debug.Log($"[PortfolioPortalLegacySize] {legacyName}: legacyRadius {legacyRadius:F2}, targetRadius {targetRadius:F2}, generatedRadius {generatedRadius:F2}, scale x{multiplier:F2}");
         }
 
-        Debug.Log($"[PortfolioPortalLegacySize] resized {resized} internal portal(s) from their own legacy world bounds.");
+        Debug.Log($"[PortfolioPortalLegacySize] resized {resized} internal portal(s) to {LegacyFootprintRatio:P0} of their legacy visual footprint.");
         Destroy(gameObject);
     }
 
@@ -98,11 +100,10 @@ public class PortfolioPortalLegacySize : MonoBehaviour
         if (hasBounds)
         {
             // Legacy portal particles form a ring; the largest world-space extent is a useful
-            // approximation of the visual radius and, importantly, preserves per-stage scale.
+            // approximation of the visual radius and preserves per-stage scale.
             return Mathf.Max(combined.extents.x, combined.extents.y, combined.extents.z);
         }
 
-        // Fallback for an unusual renderer state: use the legacy transform's own world scale.
         Vector3 scale = legacyPortal.lossyScale;
         return Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
     }
