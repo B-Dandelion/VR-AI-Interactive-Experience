@@ -11,7 +11,7 @@ public class AskAudioResponse
 
 public class MicRecorder : MonoBehaviour
 {
-    [Header("UI 연결")]
+    [Header("UI")]
     public VoiceStatusUI statusUI;
 
     [Header("Server")]
@@ -40,6 +40,7 @@ public class MicRecorder : MonoBehaviour
     {
         StopAllSounds();
         if (_isRecording) return;
+
         if (Microphone.devices.Length == 0)
         {
             if (statusUI != null) statusUI.ShowError("No Mic");
@@ -67,7 +68,6 @@ public class MicRecorder : MonoBehaviour
             return;
         }
 
-        // 증폭 및 변환
         int channels = _clip.channels;
         float[] data = new float[position * channels];
         _clip.GetData(data, 0);
@@ -94,26 +94,22 @@ public class MicRecorder : MonoBehaviour
         using (UnityWebRequest req = UnityWebRequest.Post(askAudioPath, form))
         {
             req.SetRequestHeader("ngrok-skip-browser-warning", "true");
-            req.timeout = 60; // 타임아웃 설정 (60초)
+            req.timeout = 60;
 
             yield return req.SendWebRequest();
 
-            // ★ [에러 처리 1] 네트워크/서버 에러 (404, 500, Timeout 등)
             if (req.result != UnityWebRequest.Result.Success)
             {
                 string errorMsg = $"Server Error ({req.responseCode})";
                 Debug.LogError(errorMsg + " : " + req.error);
-
-                if (statusUI != null) statusUI.ShowError(errorMsg); // 4초 후 꺼짐
+                if (statusUI != null) statusUI.ShowError(errorMsg);
                 yield break;
             }
 
-            // 성공 데이터 파싱
-            string body = req.downloadHandler.text;
-            AskAudioResponse res = null;
+            AskAudioResponse response = null;
             try
             {
-                res = JsonUtility.FromJson<AskAudioResponse>(body);
+                response = JsonUtility.FromJson<AskAudioResponse>(req.downloadHandler.text);
             }
             catch (System.Exception)
             {
@@ -121,43 +117,36 @@ public class MicRecorder : MonoBehaviour
                 yield break;
             }
 
-            if (res == null || string.IsNullOrEmpty(res.audio_url))
+            if (response == null || string.IsNullOrEmpty(response.audio_url))
             {
                 if (statusUI != null) statusUI.ShowError("Empty URL");
                 yield break;
             }
 
-            string audioUrlFull = res.audio_url;
-            if (!audioUrlFull.StartsWith("http"))
+            string audioUrl = response.audio_url;
+            if (!audioUrl.StartsWith("http"))
             {
-                audioUrlFull = serverBaseUrl + res.audio_url;
+                audioUrl = serverBaseUrl + audioUrl;
             }
-            audioUrlFull = System.Uri.EscapeUriString(audioUrlFull);
 
-            yield return StartCoroutine(DownloadAndPlayAudio(audioUrlFull));
+            audioUrl = System.Uri.EscapeUriString(audioUrl);
+            yield return StartCoroutine(DownloadAndPlayAudio(audioUrl));
         }
     }
+
     private void StopAllSounds()
     {
-        // 1. AI 마이크(MicRecorder) 끄기
-        MicRecorder mic = FindObjectOfType<MicRecorder>();
-        if (mic != null)
-        {
-            if (mic.audioSource != null && mic.audioSource.isPlaying) mic.audioSource.Stop();
-            if (mic.statusUI != null) mic.statusUI.HideImmediate();
-        }
+        if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
+        if (statusUI != null) statusUI.HideImmediate();
 
-        // 2. 맵에 있는 텔레포트 패드들 소리 끄기
-        XRTeleportPad_CC[] allPads = FindObjectsOfType<XRTeleportPad_CC>();
+        XRTeleportPad_CC[] allPads = FindObjectsByType<XRTeleportPad_CC>(FindObjectsSortMode.None);
         foreach (var pad in allPads)
         {
             AudioSource padAudio = pad.GetComponent<AudioSource>();
-            if (padAudio != null && padAudio.isPlaying)
-            {
-                padAudio.Stop();
-            }
+            if (padAudio != null && padAudio.isPlaying) padAudio.Stop();
         }
     }
+
     private IEnumerator DownloadAndPlayAudio(string url)
     {
         using (UnityWebRequest audioReq = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.MPEG))
@@ -166,7 +155,6 @@ public class MicRecorder : MonoBehaviour
 
             yield return audioReq.SendWebRequest();
 
-            // ★ [에러 처리 2] 오디오 다운로드 실패
             if (audioReq.result != UnityWebRequest.Result.Success)
             {
                 if (statusUI != null) statusUI.ShowError("Audio Error");
@@ -175,20 +163,18 @@ public class MicRecorder : MonoBehaviour
 
             AudioClip clip = ((DownloadHandlerAudioClip)audioReq.downloadHandler).audioClip;
             StopAllSounds();
-            // 재생 시작
+
             audioSource.spatialBlend = 0f;
             audioSource.clip = clip;
             audioSource.Play();
 
             if (statusUI != null) statusUI.ShowPlaying();
 
-            // 오디오 끝날 때까지 대기
             if (clip != null)
             {
                 yield return new WaitForSeconds(clip.length);
             }
 
-            // ★ [성공 처리] 재생 끝난 후 4초 대기 -> 사라짐
             if (statusUI != null) statusUI.HideDelayed(4.0f);
         }
     }

@@ -54,10 +54,10 @@ public class XRTeleportPad_CC : MonoBehaviour
                     Debug.Log($"새 스테이지 인덱스 설정: {targetStageIndex}");
                 }
 
-                // ★ [추가됨] 2. 텔레포트 전에 기존에 떠들던 애들 입 다물게 하기
+                // 2. 텔레포트 전에 기존 오디오 종료
                 StopAllPreviousSound();
 
-                // 3. 내 안내 음성 재생
+                // 3. 현재 스테이지 안내 음성 재생
                 if (specialSound != null)
                 {
                     PlaySpecialSound();
@@ -70,30 +70,25 @@ public class XRTeleportPad_CC : MonoBehaviour
         }
     }
 
-    // ★ [핵심 기능] 이전 소리 강제 종료 함수
     void StopAllPreviousSound()
     {
-        // 1. AI 마이크(MicRecorder)가 말하고 있다면 끄기
         MicRecorder mic = FindObjectOfType<MicRecorder>();
         if (mic != null)
         {
-            // 오디오 끄기
             if (mic.audioSource != null && mic.audioSource.isPlaying)
             {
                 mic.audioSource.Stop();
             }
-            // "Speaking..." 같은 UI도 즉시 숨기기
+
             if (mic.statusUI != null)
             {
                 mic.statusUI.HideImmediate();
             }
         }
 
-        // 2. 다른 텔레포트 패드에서 나오고 있던 소리 끄기 (혹시 겹칠까봐)
         XRTeleportPad_CC[] allPads = FindObjectsOfType<XRTeleportPad_CC>();
         foreach (var pad in allPads)
         {
-            // 나 자신(this)은 이제 소리를 내야 하니까 끄지 말고, 남들만 끔
             if (pad != this)
             {
                 AudioSource padAudio = pad.GetComponent<AudioSource>();
@@ -109,15 +104,10 @@ public class XRTeleportPad_CC : MonoBehaviour
 
     void PlaySpecialSound()
     {
-        // 이미 내가 재생 중이면 패스
         if (audioSource.isPlaying && audioSource.clip == specialSound) return;
 
         audioSource.clip = specialSound;
-
-        // BGM처럼 들리게 할지(2D), 공간감 있게 들리게 할지(3D) 설정
-        if (playAsBGM) audioSource.spatialBlend = 0f;
-        else audioSource.spatialBlend = 1f;
-
+        audioSource.spatialBlend = playAsBGM ? 0f : 1f;
         audioSource.Play();
         Debug.Log("새로운 안내 음성 재생!");
     }

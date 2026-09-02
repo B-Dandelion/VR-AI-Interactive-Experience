@@ -1,109 +1,174 @@
-# 세종대학교 ARVRMR (2025-2) - Unity VR 기본 템플릿 설정 가이드
+# VR AI Interactive Experience
 
-이 문서는 세종대학교 2025년도 2학기 ARVRMR 수업을 위한 Unity VR 프로젝트의 기본 설정 과정을 안내합니다. 
+**Meta Quest VR에서 사용자의 음성 질문을 AI 응답으로 연결한 Unity/C# 기반 인터랙티브 콘텐츠**
 
-Meta Quest 2/3 환경을 기준으로 합니다.
+세종대학교 AR/VR/MR 수업에서 진행한 4인 팀 프로젝트입니다. 사용자는 인체 소화기관을 직접 탐험하며 음성으로 질문하고, Unity 클라이언트는 녹음된 음성을 서버로 전달해 **STT → LLM → TTS** 처리 결과를 다시 VR 안에서 음성으로 재생합니다.
 
-<img width="1080" height="793" alt="image" src="https://github.com/user-attachments/assets/5f1ea2d7-92e7-4997-b406-13e9073f88f7" />
+이 프로젝트에서 저는 **Unity/C# 인터랙션, 오디오 데이터 처리, 클라이언트-서버 통신, XR 이동 로직과 Python AI 서버를 하나의 사용자 경험으로 연결하는 역할**을 담당했습니다.
+
+## Project Overview
+
+| Item | Description |
+| --- | --- |
+| Period | 2025.09 – 2025.12 |
+| Team | 4인 팀 프로젝트 |
+| Role | Unity/C# Interaction & AI Integration · Python AI Server |
+| Platform | Meta Quest 2 / Quest 3 |
+| Engine | Unity 2023.2.6f1 |
+| Core Stack | C# · XR Interaction Toolkit · FastAPI · faster-whisper · Gemini · Edge TTS |
+
+## Experience Screenshots
+
+<p align="center">
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.39.png" width="48%" alt="VR content screenshot 1" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.46.png" width="48%" alt="VR content screenshot 2" />
+</p>
+<p align="center">
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.45.png" width="31%" alt="VR content screenshot 3" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.50.png" width="31%" alt="VR content screenshot 4" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-11%20%EC%98%A4%ED%9B%84%203.28.50.png" width="31%" alt="VR content screenshot 5" />
+</p>
+
+콘텐츠 내부에는 별도의 조작 가이드 이미지도 구성되어 있으며, 실제 플레이 흐름에서 XR 입력과 이동 방식을 안내합니다.
+
+<details>
+<summary><b>Interaction guide assets</b></summary>
+<br/>
+<p align="center">
+  <img src="./Assets/nscript/tutoImg/bg1.jpg" width="30%" alt="Interaction guide 1" />
+  <img src="./Assets/nscript/tutoImg/bg4.jpg" width="30%" alt="Interaction guide 2" />
+  <img src="./Assets/nscript/tutoImg/bg7.jpg" width="30%" alt="Interaction guide 3" />
+</p>
+</details>
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    A[Meta Quest Controller] --> B[Unity Microphone]
+    B --> C[AudioClip Processing]
+    C --> D[16-bit PCM WAV]
+    D --> E[UnityWebRequest<br/>multipart/form-data]
+    E --> F[FastAPI<br/>POST /ask_audio]
+    F --> G[faster-whisper<br/>Korean STT]
+    G --> H[Gemini<br/>Response Generation]
+    H --> I[Edge TTS<br/>MP3 Generation]
+    I --> J[answer + audio_url]
+    J --> K[Unity Audio Download]
+    K --> L[AudioSource Playback]
+```
+
+### Interaction Flow
+
+1. Meta Quest 컨트롤러 입력으로 음성 녹음을 시작·종료합니다.
+2. Unity `AudioClip`에서 실제 녹음 구간을 추출하고 gain 보정 후 16-bit PCM WAV로 직렬화합니다.
+3. `UnityWebRequest`가 WAV 파일을 `multipart/form-data`로 FastAPI 서버에 전송합니다.
+4. 서버가 faster-whisper로 한국어 음성을 텍스트로 변환합니다.
+5. Gemini가 질문에 맞는 인체 설명 응답을 생성합니다.
+6. Edge TTS가 응답을 MP3로 변환하고 서버가 `answer`와 `audio_url`을 반환합니다.
+7. Unity가 생성 음성을 다운로드해 `AudioSource`로 재생하고 상호작용 상태 UI를 갱신합니다.
+
+## My Contribution
+
+### Unity / C# — XR Interaction & Client Integration
+
+- **Meta Quest 입력과 음성 인터랙션 연결**  
+  XR Input Action을 녹음 시작/종료 동작에 연결하고, 컨트롤러 입력이 실제 AI 질의 흐름으로 이어지도록 구현했습니다.
+
+- **Unity 오디오 데이터 처리**  
+  녹음 종료 시점의 실제 샘플 길이를 기준으로 `AudioClip` 데이터를 추출하고, gain 보정 및 clipping 방지 후 16-bit PCM WAV 데이터를 생성했습니다.
+
+- **Unity ↔ FastAPI 네트워크 통신 구현**  
+  `UnityWebRequest` 기반 multipart 업로드, HTTP 오류 처리, JSON 응답 파싱, 상대/절대 음성 URL 처리, MP3 다운로드 및 재생 흐름을 구현했습니다.
+
+- **비동기 상호작용 상태 관리**  
+  음성 입력 → 서버 처리 → 답변 재생의 흐름을 `Listening / Thinking / Speaking` UI 상태로 연결하고, 요청 실패·잘못된 응답·음성 다운로드 실패 상황을 사용자 상태와 연동했습니다.
+
+- **XR 텔레포트 및 스테이지 진행 로직 구현**  
+  XR Interaction Toolkit을 활용해 소화기관 탐험 단계 간 텔레포트와 현재 스테이지 상태를 관리하고, 이동 안내 음성과 AI 응답 음성이 겹치지 않도록 오디오 상태를 제어했습니다.
+
+### Python — AI Voice Pipeline
+
+- FastAPI 기반 음성 질의 API `POST /ask_audio` 구현
+- 요청 음성 파일 처리와 STT → LLM → TTS 파이프라인 구성
+- faster-whisper 기반 한국어 음성 인식
+- Gemini API 기반 질문 응답 생성
+- Edge TTS 기반 음성 합성 및 MP3 정적 리소스 제공
+- Unity 클라이언트와 서버 사이의 요청/응답 규격 연결 및 통합 디버깅
+
+## Engineering Highlights
+
+### 1. Unity 런타임과 AI 서비스 사이의 데이터 경계 설계
+
+Unity 내부의 `AudioClip`을 그대로 넘기지 않고, 실제 녹음 길이만큼 샘플을 추출한 뒤 **RIFF/WAVE 규격의 16-bit PCM**으로 직렬화했습니다. Unity 오디오 데이터와 Python STT 서버 사이의 입력 형식을 명확하게 정의해 서로 다른 런타임을 연결했습니다.
+
+### 2. API 호출을 실제 사용자 인터랙션으로 확장
+
+단순히 Gemini API를 호출하는 데 그치지 않고 **입력 장치 → 오디오 처리 → HTTP 요청 → STT → LLM → TTS → 미디어 다운로드 → VR 재생**까지 전체 경로를 직접 연결했습니다. 클라이언트와 서버 양쪽을 구현해 시스템 경계에서 발생하는 문제를 추적하고 수정할 수 있었습니다.
+
+### 3. XR 진행 상태와 오디오 상태의 충돌 제어
+
+VR에서는 이동 안내 음성, 사용자 녹음, AI 생성 음성이 같은 경험 안에서 연속적으로 발생합니다. 새로운 음성 상호작용이나 스테이지 이동 시 기존 재생 소스를 정리해 여러 오디오가 동시에 재생되지 않도록 제어했습니다.
+
+### 4. 텍스트 응답과 음성 리소스를 분리한 응답 구조
+
+서버는 생성된 답변 텍스트와 `audio_url`을 함께 반환하고, Unity는 응답을 받은 뒤 음성 리소스를 별도로 다운로드합니다. AI 처리 결과와 미디어 전달 단계를 분리해 클라이언트가 요청 상태와 재생 상태를 각각 관리할 수 있도록 구성했습니다.
+
+## Representative Implementations
+
+| Source | Responsibility |
+| --- | --- |
+| [`Assets/MicRecorder.cs`](./Assets/MicRecorder.cs) | 마이크 녹음, 샘플 가공, WAV 변환 호출, HTTP 요청, JSON 처리, 생성 음성 다운로드/재생 |
+| [`Assets/MicRecoderInput.cs`](./Assets/MicRecoderInput.cs) | XR Input Action과 녹음 시작/종료 연결 |
+| [`Assets/WavUtility.cs`](./Assets/WavUtility.cs) | `AudioClip` 데이터를 RIFF/WAVE 규격의 16-bit PCM으로 직렬화 |
+| [`Assets/XRTP.cs`](./Assets/XRTP.cs) | XR 텔레포트, 스테이지 상태 갱신, 오디오 전환 제어 |
+| [`Assets/nscript/TeleportManager.cs`](./Assets/nscript/TeleportManager.cs) | 현재 스테이지 복귀 및 초기 위치 이동 로직 |
+| [`Assets/nscript/VoiceStatusUI.cs`](./Assets/nscript/VoiceStatusUI.cs) | 녹음·처리·재생·오류 상태 UI 관리 |
+| [`server/main.py`](./server/main.py) | FastAPI 엔드포인트와 STT/LLM/TTS 파이프라인 orchestration |
+| [`server/voice_to_gemini.py`](./server/voice_to_gemini.py) | Gemini 응답 생성, 프롬프트 구성, Edge TTS 음성 파일 생성 |
+
+## Tech Stack
+
+**Client / XR**  
+`Unity 2023.2.6f1` · `C#` · `XR Interaction Toolkit 2.5.4` · `OpenXR` · `Oculus XR` · `URP`
+
+**AI / Server**  
+`Python` · `FastAPI` · `faster-whisper` · `Gemini API` · `Edge TTS`
+
+**Communication / Data**  
+`HTTP` · `multipart/form-data` · `JSON` · `WAV (16-bit PCM)` · `MP3`
+
+## Repository Structure
+
+```text
+VR-AI-Interactive-Experience/
+├─ Assets/                 # Unity scenes, XR assets, C# interaction logic
+│  ├─ MicRecorder.cs
+│  ├─ MicRecoderInput.cs
+│  ├─ WavUtility.cs
+│  ├─ XRTP.cs
+│  └─ nscript/
+├─ Packages/               # Unity package configuration
+├─ ProjectSettings/        # Unity project settings
+├─ server/                 # FastAPI / STT / Gemini / TTS server
+│  ├─ main.py
+│  ├─ voice_to_gemini.py
+│  ├─ requirements.txt
+│  ├─ .env.example
+│  └─ README.md
+└─ README.md
+```
+
+API key와 로컬 환경 설정은 저장소에 포함하지 않으며, 서버 설정 예시는 [`server/.env.example`](./server/.env.example)에서 확인할 수 있습니다.
+
+## Team & Scope
+
+이 프로젝트는 세종대학교 AR/VR/MR 수업의 **Unity XR 기본 템플릿**을 기반으로 시작한 4인 팀 프로젝트입니다.
+
+제가 담당한 범위는 **Unity/C# 음성 인터랙션, 오디오 처리, 서버 통신, XR 이동/상태 로직, FastAPI 기반 STT·LLM·TTS 파이프라인 및 양쪽 시스템 통합**입니다. 3D 그래픽 에셋 배치와 환경 디자인, 이동 제약을 위한 일부 레벨 콜라이더 구성은 다른 팀원이 담당했습니다.
+
+원본 팀 프로젝트 저장소: `leejaewook-dev/VR-Project---sejong`
 
 ---
 
-## 1. 프로젝트 환경
-
-* **Unity 버전:** 2023.2.6f1
-* **렌더 파이프라인:** URP (Universal Render Pipeline)
-* **타겟 플랫폼:** Meta Quest 2 / Quest 3
-
----
-
-## 2. XR 플러그인 설정
-
-1.  **XR Plug-in Management 설치**
-    * `Edit > Project Settings`로 이동합니다.
-    * 하단의 `XR Plug-in Management` 탭을 선택하고 `Install` 버튼을 클릭합니다.
-
-2.  **Oculus 플러그인 활성화**
-    * 설치가 완료되면, **Android 탭** (Quest 기기 타겟)을 선택하고 **Oculus** 항목을 체크합니다.
-    * (PC VR 테스트 시) **PC 탭** (Desktop)을 선택하고 **Oculus** 항목을 체크합니다.
-    * `Oculus` 항목 옆에 노란색 경고 아이콘이 나타나면 클릭 후 `Fix All` 또는 `Apply All`을 눌러 권장 설정을 자동 적용합니다.
-      
-3.  **Meta Quest 3 지원 활성화 (권장)**
-    * `XR Plug-in Management` 탭 하위에 있는 **Oculus** 설정 메뉴로 이동합니다. (또는 `Project Settings > XR Plug-in Management > Oculus`)
-    * **Android 탭**을 선택합니다.
-    * `Target Devices` 목록에서 **Quest 3** 항목을 **체크**합니다. (Quest 2는 기본으로 체크되어 있습니다.)
----
-
-## 3. XR Interaction Toolkit (XRI) 설치
-
-1.  **패키지 매니저 실행**
-    * `Window > Package Manager`로 이동합니다.
-    * 창 좌측 상단의 `Packages:` 드롭다운 메뉴를 `Unity Registry`로 변경합니다.
-
-2.  **XRI 설치**
-    * 검색창이나 목록에서 **XR Interaction Toolkit**을 찾아 선택하고 `Install` 버튼을 클릭합니다.
-
-3.  **Starter Assets 임포트**
-    * XRI 설치가 완료되면, Package Manager 창 우측의 설명란에서 **Samples** 탭을 엽니다.
-    * **Starter Assets** 항목 옆의 `Import` 버튼을 클릭합니다.
-
----
-
-## 4. 씬(Scene) 기본 설정
-
-1.  **기존 카메라 삭제**
-    * Hierarchy 뷰에서 `Main Camera` 오브젝트를 삭제합니다.
-      
-2.  **XR Origin (VR 플레이어) 배치**
-    * Hierarchy 뷰(빈 공간)에서 마우스 오른쪽 버튼을 클릭합니다.
-    * 메뉴에서 **`XR > XR Origin (XR Rig)`**를 선택합니다.
-    * 메뉴에서 **`XR > Locomotion System`**를 선택한 다음, `Locomotion System` 오브젝트 Inspector 뷰의 `Locomotion System, XR Origin (XR Rig)`을 슬롯에 끌어다 놓습니다.
-
-3.  **컨트롤러 입력 프리셋 설정**
-    * `XR Origin (XR Rig)`의 자식 오브젝트인 **`LeftHand Controller`**를 선택합니다.
-    * Inspector 뷰의 `XR Controller (Action-based)` 컴포넌트 상단에 있는 **`Preset`** 아이콘을 클릭하고 **`XRI Default LeftHand`**를 선택합니다.
-    * **`RightHand Controller`** 오브젝트에도 동일하게 반복하되, **`XRI Default RightHand`** 프리셋을 선택합니다.
-
-4.  **LeftHand 컨트롤러 설정 (Direct Grab 전용)(선택)**
-    * **`LeftHand Controller`** 오브젝트를 선택합니다.
-    * Inspector 뷰에서 `XR Ray Interactor`, `XR Interactor Line Visual`, `XR Ray Reticle` 등의 컴포넌트를 **제거(Remove Component)**합니다.
-    * `Add Component` 버튼을 클릭하여 **`XR Direct Interactor`** 컴포넌트를 추가합니다.
-
----
-
-## 5. 상호작용 구현
-
-### 물체 잡기 (Gra)
-
-1.  잡고 싶은 물체(예: Cube)를 생성합니다.
-2.  해당 오브젝트에 `Collider` 컴포넌트가 존재해야 합니다.
-3.  물리 효과를 위해 `Rigidbody` 컴포넌트를 추가합니다.
-4.  `Add Component`를 눌러 **XR Grab Interactable** 컴포넌트를 추가합니다.
-5.  (생략) `LeftHand Controller`의 `XR Direct Interactor`와 `RightHand Controller`의 `XR Ray Interactor`의 **`Interaction Layer Mask`**에 이 물체의 `Layer`가 포함되어 있는지 확인합니다.
-
-### 텔레포트 (Teleportation)
-
-1.  발판으로 사용할 `Cylinder` 오브젝트를 생성하고 크기를 조절합니다. 
-2.  `Add Component`를 눌러 **Teleportation Anchor** 컴포넌트를 추가합니다.
-3.  `Teleportation Anchor` 컴포넌트의 **`Teleportation Provider`** 슬롯에 Hierarchy 뷰의 **`Locomotion System`** 오브젝트를 끌어다 놓습니다.
-4.  `Teleport Trigger` 항목을 **`On Select Entered`**로 설정합니다. 
-5.  (생략) `RightHand Controller`의 자식 오브젝트인 **`XR Teleport Interactor`**의 **`Interaction Layer Mask`**에 이 발판 오브젝트의 `Layer`가 포함되어 있는지 확인합니다.
-
----
-
-## 6. VR UI 기본 설정 (Canvas)
-
-1.  **Canvas 생성**
-    * Hierarchy 뷰(빈 공간)에서 마우스 오른쪽 버튼 클릭 > **`UI > Canvas`**를 선택합니다.
-    * 이때 **`EventSystem`** 오브젝트도 자동으로 함께 생성됩니다.
-
-2.  **Canvas 설정 (World Space)**
-    * 방금 생성한 `Canvas` 오브젝트를 선택합니다.
-    * Inspector 뷰에서 `Canvas` 컴포넌트의 **`Render Mode`**를 `Screen Space - Overlay`에서 **`World Space`**로 변경합니다.
-    * `Canvas` 오브젝트의 **`Graphic Raycaster`** 컴포넌트의 **체크박스를 해제**하여 비활성화합니다.
-    * `Add Component` 버튼을 클릭하여 **`Tracked Device Graphic Raycaster`** 컴포넌트를 새로 추가합니다.
-    * `Canvas` 오브젝트의 `Rect Transform`를 적절히 조절합니다.
-
-3.  **EventSystem 설정**
-    * Hierarchy 뷰에서 `EventSystem` 오브젝트를 선택합니다.
-    * 기존에 붙어있는 **`Standalone Input Module`** 컴포넌트를 **제거(Remove Component)**합니다.
-    * `Add Component` 버튼을 클릭하여 **`XR UI Input Module`**을 추가합니다.
+> **Project Focus — AI 기술을 API 호출에 머무르게 하지 않고, Unity 클라이언트의 입력·상태·네트워크·오디오 시스템과 연결해 실제 인터랙티브 경험으로 구현했습니다.**
