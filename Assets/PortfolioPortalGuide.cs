@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -39,12 +38,9 @@ public static class PortfolioPortalGuideBootstrap
 
             if (objectName.StartsWith("tp pad"))
             {
-                if (transform.Find("[Portfolio Portal]") == null)
-                {
-                    HideLegacyPortalRenderers(transform);
-                    CreatePortalVisual(transform);
-                    portalCount++;
-                }
+                HideLegacyPortalRenderers(transform);
+                CreatePortalVisual(transform, activeScene);
+                portalCount++;
             }
 
             if (objectName.Contains("3d rightarrow"))
@@ -62,17 +58,19 @@ public static class PortfolioPortalGuideBootstrap
         foreach (Renderer renderer in renderers)
         {
             if (renderer == null) continue;
-            if (renderer.transform.IsChildOf(tpPad) || renderer.transform == tpPad)
-                renderer.enabled = false;
+            renderer.enabled = false;
         }
     }
 
-    private static void CreatePortalVisual(Transform tpPad)
+    private static void CreatePortalVisual(Transform tpPad, Scene activeScene)
     {
         ResolvePortalPose(tpPad, out Vector3 worldCenter, out Quaternion worldRotation, out float radius);
 
-        GameObject root = new GameObject("[Portfolio Portal]");
-        root.transform.SetParent(tpPad, true);
+        // Deliberately keep the visual independent from the tp-pad hierarchy.
+        // Several restored trigger objects use non-uniform scale, which would otherwise
+        // stretch a generated circular portal into an ellipse.
+        GameObject root = new GameObject($"[Portfolio Portal] {tpPad.name.Trim()}");
+        SceneManager.MoveGameObjectToScene(root, activeScene);
         root.transform.position = worldCenter;
         root.transform.rotation = worldRotation;
         root.transform.localScale = Vector3.one;
@@ -144,11 +142,7 @@ public static class PortfolioPortalGuideBootstrap
             false);
 
         PortfolioPortalAnimator animator = root.AddComponent<PortfolioPortalAnimator>();
-        animator.Configure(
-            mainRing,
-            new[] { outerArc, innerArc, accentA, accentB },
-            new[] { outerArcRoot, innerArcRoot, accentRoot },
-            new[] { 18f, -27f, 9f });
+        animator.Configure(mainRing, new[] { outerArc, innerArc, accentA, accentB });
     }
 
     private static Transform CreateRotatingLayer(Transform parent, string name, float speed)
@@ -197,7 +191,7 @@ public static class PortfolioPortalGuideBootstrap
         float span = endDegrees - startDegrees;
         for (int i = 0; i < pointCount; i++)
         {
-            float denominator = closeLoop ? segments : Mathf.Max(1, segments);
+            float denominator = Mathf.Max(1, segments);
             float t = i / denominator;
             float angle = (startDegrees + span * t) * Mathf.Deg2Rad;
             line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f));
@@ -212,14 +206,17 @@ public static class PortfolioPortalGuideBootstrap
         if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null) shader = Shader.Find("Unlit/Color");
 
+        if (shader == null)
+        {
+            Debug.LogError("[PortfolioPortalGuide] No compatible unlit shader found; portal guide was not created.");
+            return new Material(Shader.Find("Hidden/InternalErrorShader"));
+        }
+
         Material material = new Material(shader);
         material.name = "Portfolio Portal Line Material";
 
-        if (material.HasProperty("_BaseColor"))
-            material.SetColor("_BaseColor", Color.white);
-        if (material.HasProperty("_Color"))
-            material.SetColor("_Color", Color.white);
-
+        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", Color.white);
+        if (material.HasProperty("_Color")) material.SetColor("_Color", Color.white);
         return material;
     }
 
@@ -269,7 +266,6 @@ public static class PortfolioPortalGuideBootstrap
             return;
         }
 
-        // Safe fallback for a portal marker that has no collider directly attached.
         center = tpPad.position;
         rotation = tpPad.rotation;
         radius = 0.72f;
@@ -321,11 +317,7 @@ public class PortfolioPortalAnimator : MonoBehaviour
     private float mainBaseWidth;
     private float[] secondaryBaseWidths;
 
-    public void Configure(
-        LineRenderer main,
-        LineRenderer[] secondary,
-        Transform[] rotatingLayers,
-        float[] speeds)
+    public void Configure(LineRenderer main, LineRenderer[] secondary)
     {
         mainRing = main;
         secondaryLines = secondary;
