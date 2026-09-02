@@ -5,18 +5,21 @@ using UnityEngine.SceneManagement;
 /// Portfolio-capture-only visual upgrade for teleport guides.
 ///
 /// The real teleport colliders and XRTP logic are left untouched. At runtime this script:
-/// 1) hides the old portal renderers below each "tp pad" object,
-/// 2) draws a lightweight amber portal made from animated LineRenderers,
-/// 3) tones down the bright-green 3D direction arrows.
+/// 1) uses the scene's existing Portal1..Portal6 objects as the visual anchors,
+/// 2) hides their old fire-style renderers,
+/// 3) draws a lightweight layered amber portal in the exact legacy pose,
+/// 4) replaces bright-green direction-arrow materials with a muted gold guide material.
 ///
 /// No imported prefab/material/model asset is modified on disk.
 /// </summary>
 public static class PortfolioPortalGuideBootstrap
 {
-    private static readonly Color PortalGold = new Color(1.00f, 0.72f, 0.28f, 0.92f);
-    private static readonly Color PortalPaleGold = new Color(1.00f, 0.88f, 0.56f, 0.72f);
-    private static readonly Color PortalDeepAmber = new Color(1.00f, 0.43f, 0.12f, 0.68f);
-    private static readonly Color ArrowGold = new Color(0.86f, 0.69f, 0.38f, 1.00f);
+    private static readonly Color PortalGold = new Color(1.00f, 0.73f, 0.30f, 0.96f);
+    private static readonly Color PortalPaleGold = new Color(1.00f, 0.90f, 0.62f, 0.78f);
+    private static readonly Color PortalDeepAmber = new Color(1.00f, 0.45f, 0.12f, 0.72f);
+    private static readonly Color ArrowGold = new Color(0.78f, 0.62f, 0.32f, 1.00f);
+
+    private static Material arrowMaterial;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Apply()
@@ -34,42 +37,107 @@ public static class PortfolioPortalGuideBootstrap
             if (transform == null || !transform.gameObject.scene.IsValid()) continue;
             if (transform.gameObject.scene != activeScene) continue;
 
-            string objectName = transform.name.Trim().ToLowerInvariant();
+            string objectName = transform.name.Trim();
 
-            if (objectName.StartsWith("tp pad"))
+            if (IsLegacyPortalObjectName(objectName))
             {
-                HideLegacyPortalRenderers(transform);
-                CreatePortalVisual(transform, activeScene);
+                UpgradeLegacyPortal(transform, activeScene);
                 portalCount++;
+                continue;
             }
 
-            if (objectName.Contains("3d rightarrow"))
+            if (objectName.ToLowerInvariant().Contains("3d rightarrow") &&
+                !HasArrowNamedParent(transform))
             {
                 arrowCount += StyleDirectionArrow(transform);
             }
         }
 
-        Debug.Log($"[PortfolioPortalGuide] upgraded {portalCount} teleport guide(s), styled {arrowCount} arrow renderer(s).");
+        Debug.Log($"[PortfolioPortalGuide] upgraded {portalCount} legacy portal visual(s), styled {arrowCount} arrow renderer(s).");
     }
 
-    private static void HideLegacyPortalRenderers(Transform tpPad)
+    private static bool IsLegacyPortalObjectName(string objectName)
     {
-        Renderer[] renderers = tpPad.GetComponentsInChildren<Renderer>(true);
+        if (string.IsNullOrWhiteSpace(objectName)) return false;
+
+        string trimmed = objectName.Trim();
+        if (!trimmed.StartsWith("Portal", System.StringComparison.OrdinalIgnoreCase)) return false;
+
+        string suffix = trimmed.Substring("Portal".Length);
+        if (suffix.Length == 0) return false;
+
+        foreach (char c in suffix)
+        {
+            if (!char.IsDigit(c)) return false;
+        }
+
+        return true;
+    }
+
+    private static void UpgradeLegacyPortal(Transform legacyPortal, Scene activeScene)
+    {
+        Renderer[] renderers = legacyPortal.GetComponentsInChildren<Renderer>(true);
+
+        bool hasBounds = false;
+        Bounds combinedBounds = new Bounds(legacyPortal.position, Vector3.zero);
+
         foreach (Renderer renderer in renderers)
         {
             if (renderer == null) continue;
-            renderer.enabled = false;
+
+            if (!hasBounds)
+            {
+                combinedBounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                combinedBounds.Encapsulate(renderer.bounds);
+            }
         }
+
+        Vector3 worldCenter = hasBounds ? combinedBounds.center : legacyPortal.position;
+        Quaternion worldRotation = legacyPortal.rotation;
+        float radius = EstimatePortalRadius(legacyPortal, combinedBounds, hasBounds);
+
+        // Hide only the legacy visual. Teleport triggers live on separate tp-pad objects.
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null) renderer.enabled = false;
+        }
+
+        CreatePortalVisual(
+            activeScene,
+            legacyPortal.name.Trim(),
+            worldCenter,
+            worldRotation,
+            radius);
     }
 
-    private static void CreatePortalVisual(Transform tpPad, Scene activeScene)
+    private static float EstimatePortalRadius(Transform legacyPortal, Bounds bounds, bool hasBounds)
     {
-        ResolvePortalPose(tpPad, out Vector3 worldCenter, out Quaternion worldRotation, out float radius);
+        if (hasBounds)
+        {
+            // The old portal is already positioned and sized correctly in the restored scene.
+            // Use its renderer bounds only for scale, while preserving its own rotation for pose.
+            float maxExtent = Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z);
+            if (maxExtent > 0.05f)
+                return Mathf.Clamp(maxExtent * 0.94f, 0.52f, 1.55f);
+        }
 
-        // Deliberately keep the visual independent from the tp-pad hierarchy.
-        // Several restored trigger objects use non-uniform scale, which would otherwise
-        // stretch a generated circular portal into an ellipse.
-        GameObject root = new GameObject($"[Portfolio Portal] {tpPad.name.Trim()}");
+        Vector3 scale = legacyPortal.lossyScale;
+        float fallback = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+        return Mathf.Clamp(fallback * 0.72f, 0.52f, 1.25f);
+    }
+
+    private static void CreatePortalVisual(
+        Scene activeScene,
+        string legacyName,
+        Vector3 worldCenter,
+        Quaternion worldRotation,
+        float radius)
+    {
+        GameObject root = new GameObject($"[Portfolio Portal] {legacyName}");
         SceneManager.MoveGameObjectToScene(root, activeScene);
         root.transform.position = worldCenter;
         root.transform.rotation = worldRotation;
@@ -78,71 +146,59 @@ public static class PortfolioPortalGuideBootstrap
         Material lineMaterial = CreateLineMaterial();
 
         LineRenderer mainRing = CreateArc(
-            root.transform,
-            "Main Ring",
-            radius,
-            0f,
-            360f,
-            96,
-            0.026f,
-            PortalGold,
-            lineMaterial,
-            true);
+            root.transform, "Main Ring", radius,
+            0f, 360f, 112, 0.024f,
+            PortalGold, lineMaterial, true);
 
-        Transform outerArcRoot = CreateRotatingLayer(root.transform, "Outer Arc", +18f);
+        // A quiet inner ring gives the portal a designed UI-like structure instead of
+        // reading as a single fire hoop.
+        LineRenderer innerRing = CreateArc(
+            root.transform, "Inner Ring", radius * 0.82f,
+            0f, 360f, 104, 0.008f,
+            PortalPaleGold, lineMaterial, true);
+
+        Transform outerArcRoot = CreateRotatingLayer(root.transform, "Outer Broken Ring", +15f);
         LineRenderer outerArc = CreateArc(
-            outerArcRoot,
-            "Arc",
-            radius * 1.09f,
-            18f,
-            286f,
-            76,
-            0.014f,
-            PortalPaleGold,
-            lineMaterial,
-            false);
+            outerArcRoot, "Arc", radius * 1.08f,
+            14f, 298f, 88, 0.012f,
+            PortalPaleGold, lineMaterial, false);
 
-        Transform innerArcRoot = CreateRotatingLayer(root.transform, "Inner Arc", -27f);
+        Transform innerArcRoot = CreateRotatingLayer(root.transform, "Inner Broken Ring", -22f);
         LineRenderer innerArc = CreateArc(
-            innerArcRoot,
-            "Arc",
-            radius * 0.88f,
-            206f,
-            494f,
-            70,
-            0.012f,
-            PortalDeepAmber,
-            lineMaterial,
-            false);
+            innerArcRoot, "Arc", radius * 0.91f,
+            194f, 482f, 82, 0.010f,
+            PortalDeepAmber, lineMaterial, false);
 
-        // Small partial accent arcs create the broken, layered magical-circle silhouette
-        // without relying on external textures or a heavy particle asset.
-        Transform accentRoot = CreateRotatingLayer(root.transform, "Accent Arcs", +9f);
-        LineRenderer accentA = CreateArc(
-            accentRoot,
-            "Accent A",
-            radius * 1.17f,
-            42f,
-            108f,
-            22,
-            0.009f,
-            PortalPaleGold,
-            lineMaterial,
-            false);
-        LineRenderer accentB = CreateArc(
-            accentRoot,
-            "Accent B",
-            radius * 1.17f,
-            222f,
-            288f,
-            22,
-            0.009f,
-            PortalPaleGold,
-            lineMaterial,
-            false);
+        // Short rotating arc segments create a restrained mystical-circle silhouette.
+        Transform glyphRoot = CreateRotatingLayer(root.transform, "Glyph Arcs", +8f);
+        LineRenderer[] glyphArcs = new LineRenderer[8];
+        for (int i = 0; i < glyphArcs.Length; i++)
+        {
+            float start = i * 45f + 7f;
+            float span = (i % 2 == 0) ? 15f : 9f;
+            glyphArcs[i] = CreateArc(
+                glyphRoot,
+                $"Glyph {i + 1}",
+                radius * 1.16f,
+                start,
+                start + span,
+                8,
+                0.008f,
+                i % 2 == 0 ? PortalPaleGold : PortalDeepAmber,
+                lineMaterial,
+                false);
+        }
+
+        LineRenderer[] secondary = new LineRenderer[4 + glyphArcs.Length];
+        secondary[0] = innerRing;
+        secondary[1] = outerArc;
+        secondary[2] = innerArc;
+        secondary[3] = mainRing;
+        for (int i = 0; i < glyphArcs.Length; i++)
+            secondary[4 + i] = glyphArcs[i];
 
         PortfolioPortalAnimator animator = root.AddComponent<PortfolioPortalAnimator>();
-        animator.Configure(mainRing, new[] { outerArc, innerArc, accentA, accentB });
+        animator.Configure(mainRing, secondary);
     }
 
     private static Transform CreateRotatingLayer(Transform parent, string name, float speed)
@@ -175,8 +231,8 @@ public static class PortfolioPortalGuideBootstrap
         line.loop = closeLoop;
         line.alignment = LineAlignment.TransformZ;
         line.textureMode = LineTextureMode.Stretch;
-        line.numCapVertices = 4;
-        line.numCornerVertices = 4;
+        line.numCapVertices = 5;
+        line.numCornerVertices = 5;
         line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         line.receiveShadows = false;
         line.material = new Material(sharedMaterial);
@@ -209,7 +265,7 @@ public static class PortfolioPortalGuideBootstrap
         if (shader == null)
         {
             Debug.LogError("[PortfolioPortalGuide] No compatible unlit shader found; portal guide was not created.");
-            return new Material(Shader.Find("Hidden/InternalErrorShader"));
+            shader = Shader.Find("Hidden/InternalErrorShader");
         }
 
         Material material = new Material(shader);
@@ -220,95 +276,67 @@ public static class PortfolioPortalGuideBootstrap
         return material;
     }
 
-    private static void ResolvePortalPose(Transform tpPad, out Vector3 center, out Quaternion rotation, out float radius)
+    private static bool HasArrowNamedParent(Transform transform)
     {
-        Collider collider = tpPad.GetComponent<Collider>();
-        if (collider == null) collider = tpPad.GetComponentInChildren<Collider>(true);
-
-        if (collider is BoxCollider box)
+        Transform parent = transform.parent;
+        while (parent != null)
         {
-            Transform t = box.transform;
-            center = t.TransformPoint(box.center);
-
-            Vector3 lossy = t.lossyScale;
-            float sx = Mathf.Abs(box.size.x * lossy.x);
-            float sy = Mathf.Abs(box.size.y * lossy.y);
-            float sz = Mathf.Abs(box.size.z * lossy.z);
-
-            // The thinnest trigger dimension is treated as the portal normal.
-            // Our generated circle lives in local XY (normal +Z), so rotate +Z
-            // onto the collider's thin local axis.
-            if (sx <= sy && sx <= sz)
-            {
-                rotation = t.rotation * Quaternion.Euler(0f, 90f, 0f); // +Z -> +X
-                radius = Mathf.Clamp(Mathf.Min(sy, sz) * 0.43f, 0.48f, 1.15f);
-            }
-            else if (sy <= sx && sy <= sz)
-            {
-                rotation = t.rotation * Quaternion.Euler(-90f, 0f, 0f); // +Z -> +Y
-                radius = Mathf.Clamp(Mathf.Min(sx, sz) * 0.43f, 0.48f, 1.15f);
-            }
-            else
-            {
-                rotation = t.rotation;
-                radius = Mathf.Clamp(Mathf.Min(sx, sy) * 0.43f, 0.48f, 1.15f);
-            }
-
-            return;
+            if (parent.name.ToLowerInvariant().Contains("3d rightarrow")) return true;
+            parent = parent.parent;
         }
-
-        if (collider != null)
-        {
-            center = collider.bounds.center;
-            rotation = collider.transform.rotation;
-            Vector3 extents = collider.bounds.extents;
-            radius = Mathf.Clamp(Mathf.Max(extents.x, extents.y) * 0.72f, 0.48f, 1.15f);
-            return;
-        }
-
-        center = tpPad.position;
-        rotation = tpPad.rotation;
-        radius = 0.72f;
+        return false;
     }
 
     private static int StyleDirectionArrow(Transform arrowRoot)
     {
         int styled = 0;
         Renderer[] renderers = arrowRoot.GetComponentsInChildren<Renderer>(true);
+        Material solidArrowMaterial = GetArrowMaterial();
 
         foreach (Renderer renderer in renderers)
         {
             if (renderer == null) continue;
 
-            Material[] materials = renderer.materials;
-            foreach (Material material in materials)
-            {
-                if (material == null) continue;
+            Material[] replacements = new Material[Mathf.Max(1, renderer.sharedMaterials.Length)];
+            for (int i = 0; i < replacements.Length; i++)
+                replacements[i] = solidArrowMaterial;
 
-                if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", ArrowGold);
-                if (material.HasProperty("_Color")) material.SetColor("_Color", ArrowGold);
-                if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", 0f);
-                if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0.14f);
-                if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", 0.14f);
-
-                // Keep it readable but stop it from looking like a neon-green debug prop.
-                if (material.HasProperty("_EmissionColor"))
-                {
-                    material.SetColor("_EmissionColor", ArrowGold * 0.18f);
-                    material.DisableKeyword("_EMISSION");
-                }
-            }
-
+            renderer.materials = replacements;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = true;
             styled++;
         }
 
+        // These arrows are navigation cues, not hero props. Make them less dominant.
+        arrowRoot.localScale *= 0.72f;
         return styled;
+    }
+
+    private static Material GetArrowMaterial()
+    {
+        if (arrowMaterial != null) return arrowMaterial;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null) shader = Shader.Find("Standard");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        arrowMaterial = new Material(shader);
+        arrowMaterial.name = "Portfolio Direction Arrow";
+
+        if (arrowMaterial.HasProperty("_BaseColor")) arrowMaterial.SetColor("_BaseColor", ArrowGold);
+        if (arrowMaterial.HasProperty("_Color")) arrowMaterial.SetColor("_Color", ArrowGold);
+        if (arrowMaterial.HasProperty("_Metallic")) arrowMaterial.SetFloat("_Metallic", 0f);
+        if (arrowMaterial.HasProperty("_Smoothness")) arrowMaterial.SetFloat("_Smoothness", 0.16f);
+        if (arrowMaterial.HasProperty("_Glossiness")) arrowMaterial.SetFloat("_Glossiness", 0.16f);
+        if (arrowMaterial.HasProperty("_EnvironmentReflections")) arrowMaterial.SetFloat("_EnvironmentReflections", 0f);
+
+        arrowMaterial.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+        return arrowMaterial;
     }
 }
 
 /// <summary>
-/// Adds a very small pulse to the generated portal lines.
+/// Adds a subtle breathing pulse to generated portal lines.
 /// </summary>
 public class PortfolioPortalAnimator : MonoBehaviour
 {
@@ -321,16 +349,16 @@ public class PortfolioPortalAnimator : MonoBehaviour
     {
         mainRing = main;
         secondaryLines = secondary;
-        mainBaseWidth = main != null ? main.startWidth : 0.026f;
+        mainBaseWidth = main != null ? main.startWidth : 0.024f;
 
         secondaryBaseWidths = new float[secondaryLines != null ? secondaryLines.Length : 0];
         for (int i = 0; i < secondaryBaseWidths.Length; i++)
-            secondaryBaseWidths[i] = secondaryLines[i] != null ? secondaryLines[i].startWidth : 0.012f;
+            secondaryBaseWidths[i] = secondaryLines[i] != null ? secondaryLines[i].startWidth : 0.010f;
     }
 
     private void Update()
     {
-        float pulse = 1f + Mathf.Sin(Time.time * 2.15f) * 0.11f;
+        float pulse = 1f + Mathf.Sin(Time.time * 2.0f) * 0.08f;
 
         if (mainRing != null)
         {
@@ -343,10 +371,12 @@ public class PortfolioPortalAnimator : MonoBehaviour
 
         for (int i = 0; i < secondaryLines.Length && i < secondaryBaseWidths.Length; i++)
         {
-            if (secondaryLines[i] == null) continue;
-            float width = secondaryBaseWidths[i] * (2f - pulse * 0.92f);
-            secondaryLines[i].startWidth = width;
-            secondaryLines[i].endWidth = width;
+            LineRenderer line = secondaryLines[i];
+            if (line == null || line == mainRing) continue;
+
+            float width = secondaryBaseWidths[i] * (1f + Mathf.Sin(Time.time * 1.55f + i * 0.37f) * 0.05f);
+            line.startWidth = width;
+            line.endWidth = width;
         }
     }
 }
