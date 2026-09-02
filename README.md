@@ -11,7 +11,7 @@
 - **플랫폼**: Meta Quest 2 / Quest 3
 - **Unity**: 2023.2.6f1
 - **핵심 목표**: VR 입력과 외부 AI 서비스를 하나의 음성 상호작용 흐름으로 통합
-- **현재 상태**: 포트폴리오용 소스 정리 완료 중 / 로컬 실행 및 Quest 재검증 예정
+- **현재 상태**: 포트폴리오 제출을 위해 실행 복구 및 공개 소스 정리 진행 중
 
 ## System Flow
 
@@ -85,12 +85,13 @@ VR-AI-Interactive-Experience/
 
 | File | Responsibility |
 | --- | --- |
-| `Assets/MicRecorder.cs` | 마이크 녹음, 오디오 전처리, HTTP 요청, 서버 응답 및 생성 음성 재생 |
+| `Assets/MicRecorder.cs` | 마이크 녹음, 오디오 전처리, HTTP 요청, 서버 응답 및 생성 음성 재생 + 포트폴리오용 오프라인 데모 모드 |
 | `Assets/MicRecoderInput.cs` | XR Input Action과 녹음 시작/종료 연결 |
 | `Assets/WavUtility.cs` | Unity `AudioClip` 데이터를 16-bit PCM WAV로 직렬화 |
 | `Assets/XRTP.cs` | XR 텔레포트 및 스테이지/오디오 상태 제어 |
 | `Assets/nscript/TeleportManager.cs` | 현재 스테이지 복귀 및 전체 초기 위치 이동 로직 |
-| `Assets/nscript/VoiceStatusUI.cs` | 녹음·처리·재생·오류 상태 UI 관리 |
+| `Assets/nscript/VoiceStatusUI.cs` | 녹음·처리·재생·오류 및 데모 메시지 UI 관리 |
+| `Assets/PortfolioVisualPolish.cs` | 촬영 시 장기 표면 반사와 충돌용 반투명 메시를 런타임에서 보정 |
 
 ## Tech Stack
 
@@ -112,6 +113,19 @@ VR-AI-Interactive-Experience/
 
 실행 방법은 [`server/README.md`](./server/README.md)를 참고합니다.
 
+## Portfolio Capture Mode
+
+포트폴리오 촬영을 위해 서버나 마이크가 없어도 UI 흐름을 안정적으로 재현하는 **오프라인 데모 모드**를 `MicRecorder`에 추가했습니다.
+
+- 기본값 `portfolioDemoMode = true`
+- A 버튼을 누르면 `Listening...` 상태 표시
+- 버튼을 놓으면 미리 준비된 질문 인식 → `Thinking...` → AI 답변 텍스트 순서로 재생
+- 화면에 `[DEMO]` 라벨을 표시해 실제 실시간 API 호출과 구분
+- `demoResponseAudio`에 사전 생성 TTS 클립을 연결하면 답변 텍스트와 함께 음성도 재생 가능
+- 실제 서버 검증 시 Inspector에서 `portfolioDemoMode`를 끄면 기존 녹음/HTTP/STT/LLM/TTS 흐름을 그대로 사용
+
+`PortfolioVisualPolish.cs`는 촬영 시에만 런타임 재질 인스턴스를 조정합니다. 원본 모델과 Material asset은 수정하지 않으며, 장기 메시의 강한 metallic/smoothness/environment reflection을 줄이고 충돌용 저알파 반투명 메시의 Renderer를 숨깁니다.
+
 ## What I Learned
 
 이 프로젝트에서는 생성형 AI API 자체보다 **VR 클라이언트와 외부 AI 시스템을 실제 사용자 인터랙션으로 연결하는 과정**에 집중했습니다. VR 입력 → 오디오 데이터 처리 → 네트워크 요청 → STT/LLM/TTS 처리 → VR 음성 재생까지 이어지는 전체 흐름을 구현하며 Unity 런타임과 Python 서버 사이의 상태 관리와 통합 디버깅을 경험했습니다.
@@ -129,7 +143,9 @@ VR-AI-Interactive-Experience/
 - [x] 팀 최종 Unity 소스 복원
 - [x] private 서버 최종 브랜치 기반 공개용 서버 코드 정리
 - [x] secret / generated file 제외 규칙 정리
-- [ ] Unity 2023.2.6f1 로컬 실행 확인
-- [ ] FastAPI + STT + Gemini + TTS 재실행 확인
-- [ ] Quest 또는 XR 환경에서 end-to-end 동작 재검증
+- [x] Unity 2023.2.6f1 로컬 실행 및 XR Simulator 이동 확인
+- [x] 포탈/스테이지 이동 복구 및 연속 진행 확인
+- [x] 포트폴리오 촬영용 오프라인 AI 데모 모드 추가
+- [ ] FastAPI + STT + Gemini + TTS 현재 환경 재실행 확인
+- [ ] Quest 실기기 end-to-end 재검증
 - [ ] 데모 영상 / GIF 및 시스템 구조도 추가
