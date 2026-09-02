@@ -26,30 +26,9 @@ public class MicRecorder : MonoBehaviour
     [Range(1f, 20f)]
     public float gainMultiplier = 5.0f;
 
-    [Header("Portfolio Demo Mode")]
-    [Tooltip("When enabled, the A-button flow is demonstrated without a running server or microphone.")]
-    public bool portfolioDemoMode = true;
-
-    [Tooltip("Keeps the recorded demo visibly distinguishable from a live server call.")]
-    public bool showDemoLabel = true;
-
-    [TextArea(1, 3)]
-    public string demoQuestion = "위는 어떤 역할을 해?";
-
-    [TextArea(2, 5)]
-    public string demoAnswer = "위는 음식물을 잠시 저장하고, 위산과 소화효소로 음식물을 분해해 소장으로 보내는 기관입니다.";
-
-    public float demoRecognizedDelay = 0.7f;
-    public float demoThinkingSeconds = 1.5f;
-    public float demoAnswerHoldSeconds = 5.0f;
-
-    [Tooltip("Optional prerecorded TTS. Leave empty for a text-only demo.")]
-    public AudioClip demoResponseAudio;
-
     private AudioClip _clip;
     private string _micDevice;
     private bool _isRecording;
-    private Coroutine _demoRoutine;
 
     void Start()
     {
@@ -61,20 +40,6 @@ public class MicRecorder : MonoBehaviour
     {
         StopAllSounds();
         if (_isRecording) return;
-
-        // Demo mode deliberately avoids external dependencies so the portfolio
-        // interaction can be captured reliably from the restored Unity project.
-        if (portfolioDemoMode)
-        {
-            _isRecording = true;
-            if (_demoRoutine != null)
-            {
-                StopCoroutine(_demoRoutine);
-                _demoRoutine = null;
-            }
-            if (statusUI != null) statusUI.ShowRecording();
-            return;
-        }
 
         if (Microphone.devices.Length == 0)
         {
@@ -92,14 +57,6 @@ public class MicRecorder : MonoBehaviour
     public void StopRecordAndSend()
     {
         if (!_isRecording) return;
-
-        if (portfolioDemoMode)
-        {
-            _isRecording = false;
-            if (_demoRoutine != null) StopCoroutine(_demoRoutine);
-            _demoRoutine = StartCoroutine(RunPortfolioDemo());
-            return;
-        }
 
         int position = Microphone.GetPosition(_micDevice);
         Microphone.End(_micDevice);
@@ -127,40 +84,6 @@ public class MicRecorder : MonoBehaviour
         StartCoroutine(SendAudioToServer(wavData));
     }
 
-    private IEnumerator RunPortfolioDemo()
-    {
-        string prefix = showDemoLabel ? "[DEMO]\n" : "";
-
-        if (statusUI != null)
-        {
-            statusUI.ShowMessage($"{prefix}질문 인식\n\"{demoQuestion}\"", Color.white);
-        }
-
-        yield return new WaitForSeconds(demoRecognizedDelay);
-
-        if (statusUI != null) statusUI.ShowProcessing();
-        yield return new WaitForSeconds(demoThinkingSeconds);
-
-        if (statusUI != null)
-        {
-            statusUI.ShowMessage($"{prefix}AI 답변\n{demoAnswer}", Color.white);
-        }
-
-        float holdSeconds = demoAnswerHoldSeconds;
-        if (demoResponseAudio != null && audioSource != null)
-        {
-            audioSource.spatialBlend = 0f;
-            audioSource.clip = demoResponseAudio;
-            audioSource.Play();
-            holdSeconds = Mathf.Max(holdSeconds, demoResponseAudio.length);
-        }
-
-        yield return new WaitForSeconds(holdSeconds);
-
-        if (statusUI != null) statusUI.HideImmediate();
-        _demoRoutine = null;
-    }
-
     private IEnumerator SendAudioToServer(byte[] wavData)
     {
         if (statusUI != null) statusUI.ShowProcessing();
@@ -179,16 +102,14 @@ public class MicRecorder : MonoBehaviour
             {
                 string errorMsg = $"Server Error ({req.responseCode})";
                 Debug.LogError(errorMsg + " : " + req.error);
-
                 if (statusUI != null) statusUI.ShowError(errorMsg);
                 yield break;
             }
 
-            string body = req.downloadHandler.text;
-            AskAudioResponse res = null;
+            AskAudioResponse response = null;
             try
             {
-                res = JsonUtility.FromJson<AskAudioResponse>(body);
+                response = JsonUtility.FromJson<AskAudioResponse>(req.downloadHandler.text);
             }
             catch (System.Exception)
             {
@@ -196,20 +117,20 @@ public class MicRecorder : MonoBehaviour
                 yield break;
             }
 
-            if (res == null || string.IsNullOrEmpty(res.audio_url))
+            if (response == null || string.IsNullOrEmpty(response.audio_url))
             {
                 if (statusUI != null) statusUI.ShowError("Empty URL");
                 yield break;
             }
 
-            string audioUrlFull = res.audio_url;
-            if (!audioUrlFull.StartsWith("http"))
+            string audioUrl = response.audio_url;
+            if (!audioUrl.StartsWith("http"))
             {
-                audioUrlFull = serverBaseUrl + res.audio_url;
+                audioUrl = serverBaseUrl + audioUrl;
             }
-            audioUrlFull = System.Uri.EscapeUriString(audioUrlFull);
 
-            yield return StartCoroutine(DownloadAndPlayAudio(audioUrlFull));
+            audioUrl = System.Uri.EscapeUriString(audioUrl);
+            yield return StartCoroutine(DownloadAndPlayAudio(audioUrl));
         }
     }
 
