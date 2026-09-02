@@ -47,13 +47,6 @@ public class VoiceStatusUI : MonoBehaviour
         SetStatus(playMsg, playColor);
     }
 
-    // Portfolio demo and other scripted UI can reuse the same status canvas.
-    public void ShowMessage(string message, Color color)
-    {
-        StopAutoHide();
-        SetStatus(message, color);
-    }
-
     public void ShowError(string message)
     {
         StopAutoHide();
