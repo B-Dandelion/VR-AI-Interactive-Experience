@@ -6,6 +6,8 @@
 
 이 프로젝트에서 저는 **Unity/C# 인터랙션, 오디오 데이터 처리, 클라이언트-서버 통신, XR 이동 로직과 Python AI 서버를 하나의 사용자 경험으로 연결하는 역할**을 담당했습니다.
 
+---
+
 ## Project Overview
 
 | Item | Description |
@@ -17,19 +19,50 @@
 | Engine | Unity 2023.2.6f1 |
 | Core Stack | C# · XR Interaction Toolkit · FastAPI · faster-whisper · Gemini · Edge TTS |
 
-## Experience Screenshots
+## Experience Gallery
 
 <p align="center">
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.39.png" width="48%" alt="VR content screenshot 1" />
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.46.png" width="48%" alt="VR content screenshot 2" />
+  <img src="./Assets/1.png" width="96%" alt="Digestive tract exploration and portal navigation" />
+</p>
+<p align="center"><sub>소화기관 내부 탐험과 단계별 공간 전환</sub></p>
+
+<p align="center">
+  <img src="./Assets/2.png" width="48%" alt="XR controller interaction" />
+  <img src="./Assets/3.png" width="48%" alt="Portal transition point" />
+</p>
+<p align="center"><sub>XR 컨트롤러 기반 인터랙션 · 스테이지 전환 포인트</sub></p>
+
+<p align="center">
+  <img src="./Assets/4.png" width="82%" alt="In-world VR control menu" />
+</p>
+<p align="center"><sub>VR 내부에서 동작하는 스테이지 초기화·복귀·튜토리얼 메뉴</sub></p>
+
+<details>
+<summary><b>Additional project screenshots</b></summary>
+<br/>
+<p align="center">
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.39.png" width="48%" alt="VR project screenshot 1" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.46.png" width="48%" alt="VR project screenshot 2" />
 </p>
 <p align="center">
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.45.png" width="31%" alt="VR content screenshot 3" />
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.50.png" width="31%" alt="VR content screenshot 4" />
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-11%20%EC%98%A4%ED%9B%84%203.28.50.png" width="31%" alt="VR content screenshot 5" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.45.png" width="31%" alt="VR project screenshot 3" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.50.png" width="31%" alt="VR project screenshot 4" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-11%20%EC%98%A4%ED%9B%84%203.28.50.png" width="31%" alt="VR project screenshot 5" />
 </p>
+</details>
 
-콘텐츠 내부에는 별도의 조작 가이드 이미지도 구성되어 있으며, 실제 플레이 흐름에서 XR 입력과 이동 방식을 안내합니다.
+---
+
+## What I Built
+
+| Area | Implementation |
+| --- | --- |
+| **XR Input** | Meta Quest 컨트롤러 입력과 음성 녹음 시작·종료 연결 |
+| **Audio Processing** | `AudioClip` 샘플 추출, gain 보정, 16-bit PCM WAV 직렬화 |
+| **Client ↔ Server** | `UnityWebRequest` 기반 multipart 업로드, JSON 응답 처리, MP3 다운로드 |
+| **AI Voice Pipeline** | FastAPI에서 faster-whisper STT → Gemini 응답 생성 → Edge TTS 음성 합성 |
+| **XR Navigation** | XR Interaction Toolkit 기반 텔레포트, 스테이지 상태 및 복귀 로직 |
+| **Runtime State** | Listening / Thinking / Speaking UI와 오류·오디오 상태 제어 |
 
 ## System Architecture
 
@@ -57,6 +90,8 @@ flowchart LR
 5. Gemini가 질문에 맞는 인체 설명 응답을 생성합니다.
 6. Edge TTS가 응답을 MP3로 변환하고 서버가 `answer`와 `audio_url`을 반환합니다.
 7. Unity가 생성 음성을 다운로드해 `AudioSource`로 재생하고 상호작용 상태 UI를 갱신합니다.
+
+---
 
 ## My Contribution
 
@@ -86,6 +121,8 @@ flowchart LR
 - Edge TTS 기반 음성 합성 및 MP3 정적 리소스 제공
 - Unity 클라이언트와 서버 사이의 요청/응답 규격 연결 및 통합 디버깅
 
+---
+
 ## Engineering Highlights
 
 ### 1. Unity 런타임과 AI 서비스 사이의 데이터 경계 설계
@@ -103,6 +140,8 @@ VR에서는 이동 안내 음성, 사용자 녹음, AI 생성 음성이 같은 �
 ### 4. 텍스트 응답과 음성 리소스를 분리한 응답 구조
 
 서버는 생성된 답변 텍스트와 `audio_url`을 함께 반환하고, Unity는 응답을 받은 뒤 음성 리소스를 별도로 다운로드합니다. AI 처리 결과와 미디어 전달 단계를 분리해 클라이언트가 요청 상태와 재생 상태를 각각 관리할 수 있도록 구성했습니다.
+
+---
 
 ## Representative Implementations
 
