@@ -37,19 +37,19 @@
 </p>
 <p align="center"><sub>VR 내부에서 동작하는 스테이지 초기화·복귀·튜토리얼 메뉴</sub></p>
 
-<details>
-<summary><b>Additional project screenshots</b></summary>
-<br/>
+### VR Interaction Guide
+
+프로젝트 내부에서 실제로 사용한 **VR 조작·진행 안내 화면**입니다. 컨트롤러 조작과 콘텐츠 진행 방식을 VR 안에서 이해할 수 있도록 구성했습니다.
+
 <p align="center">
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.39.png" width="48%" alt="VR project screenshot 1" />
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.46.png" width="48%" alt="VR project screenshot 2" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.39.png" width="48%" alt="VR interaction guide screenshot 1" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.12.46.png" width="48%" alt="VR interaction guide screenshot 2" />
 </p>
 <p align="center">
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.45.png" width="31%" alt="VR project screenshot 3" />
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.50.png" width="31%" alt="VR project screenshot 4" />
-  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-11%20%EC%98%A4%ED%9B%84%203.28.50.png" width="31%" alt="VR project screenshot 5" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.45.png" width="31%" alt="VR interaction guide screenshot 3" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-10%20%EC%98%A4%ED%9B%84%205.20.50.png" width="31%" alt="VR interaction guide screenshot 4" />
+  <img src="./Assets/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202025-12-11%20%EC%98%A4%ED%9B%84%203.28.50.png" width="31%" alt="VR interaction guide screenshot 5" />
 </p>
-</details>
 
 ---
 
